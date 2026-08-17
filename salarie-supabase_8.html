@@ -2572,7 +2572,13 @@ textarea.dmd-in{resize:none;min-height:80px}
 <script>
 var SUPABASE_URL = "https://rzveghiwbjafmfhrfscb.supabase.co";
 var SUPABASE_KEY = "sb_publishable_Hb6ILSc7bzW_sC6ZD2X7Nw_QP5homkU";
-var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// storageKey distinct : voir le commentaire équivalent dans negociant_8.html
+// — le salarié n'a pas de vraie session Auth (juste code+PIN), mais on
+// isole quand même le client pour éviter tout effet de bord si cette page
+// est ouverte en même temps qu'admin/négociant sur le même domaine.
+var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: { storageKey: "sb-salarie-auth" }
+});
 
 // Échappement HTML — utilisé pour toute donnée insérée via innerHTML
 // (nom d'agence, message, chantier...) afin d'empêcher qu'un texte du

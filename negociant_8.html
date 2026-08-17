@@ -423,7 +423,18 @@ body{font-family:'Inter',sans-serif;background:var(--bg);display:flex;flex-direc
 <script>
 var SUPABASE_URL = "https://rzveghiwbjafmfhrfscb.supabase.co";
 var SUPABASE_KEY = "sb_publishable_Hb6ILSc7bzW_sC6ZD2X7Nw_QP5homkU";
-var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// storageKey distinct : admin-supabase-final.html, negociant_8.html et
+// salarie-supabase_8.html sont hébergées sur le même domaine (negoce-id.fr)
+// et utilisaient jusqu'ici la clé de session par défaut du client Supabase
+// — la MÊME pour les trois. Résultat : si deux de ces apps sont ouvertes
+// dans des onglets différents du même navigateur, se connecter sur l'une
+// écrase la session de l'autre (partagée via localStorage), qui se
+// retrouve alors à agir avec la mauvaise identité au prochain appel
+// serveur (ex: négociant rejeté avec "Non autorisé" alors que son compte
+// est valide, parce que l'onglet utilisait en réalité la session admin).
+var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: { storageKey: "sb-negociant-auth" }
+});
 
 // Traduit les messages d'erreur techniques (souvent en anglais, venant de
 // Supabase Auth/Storage ou du réseau) en français compréhensible. Si le

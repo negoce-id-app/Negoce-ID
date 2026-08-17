@@ -2778,7 +2778,12 @@ var passages = [];
 var salPhotoData = null;
 
 // ── AUTH ──
-var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// storageKey distinct : voir le commentaire équivalent dans negociant_8.html
+// — évite que cette app écrase la session d'un autre onglet (négociant ou
+// salarié) ouvert en même temps sur le même domaine.
+var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: { storageKey: "sb-admin-auth" }
+});
 
 // Traduit les messages d'erreur techniques (souvent en anglais, venant de
 // Supabase Auth/Storage ou du réseau) en français compréhensible. Si le
