@@ -2766,6 +2766,31 @@ tr:hover td{background:#FAFBFF}
   </div>
 </div>
 
+<!-- MODAL PAIEMENT -->
+<div class="modal-bg" id="modalPaiement">
+  <div class="modal">
+    <div class="modal-title" id="paiementTitle">Générer un lien de paiement</div>
+    <div class="form-group">
+      <label class="form-lbl">Formule</label>
+      <select class="form-in" id="paiementPlan">
+        <option value="solo">Indépendant — 9 € HT/mois (1 utilisateur)</option>
+        <option value="petite">Petite entreprise — 39 € HT/mois (≤10 salariés)</option>
+        <option value="entreprise">Entreprise — 79 € HT/mois (≤50 salariés)</option>
+        <option value="grande">Grande entreprise — sur devis (50+ salariés, hors Stripe)</option>
+      </select>
+    </div>
+    <div id="paiementLienBloc" style="display:none;margin-top:6px">
+      <label class="form-lbl">Lien à transmettre à l'entreprise</label>
+      <input class="form-in" id="paiementLien" type="text" readonly onclick="this.select()">
+      <button class="btn-tbl" style="margin-top:8px" onclick="copierLienPaiement()">📋 Copier le lien</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('modalPaiement')">Fermer</button>
+      <button class="btn-save" id="paiementGenBtn" onclick="generatePaymentLink()">💳 Générer le lien</button>
+    </div>
+  </div>
+</div>
+
 <script>
 var SUPABASE_URL = "https://rzveghiwbjafmfhrfscb.supabase.co";
 var SUPABASE_KEY = "sb_publishable_Hb6ILSc7bzW_sC6ZD2X7Nw_QP5homkU";
@@ -3112,13 +3137,18 @@ function renderCompaniesSection() {
     body.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">Aucune entreprise trouvée</td></tr>';
     return;
   }
+  var PLAN_LABELS = { solo: "Indépendant", petite: "Petite entreprise", entreprise: "Entreprise", grande: "Grande entreprise" };
   body.innerHTML = filtered.map(function(c) {
     var statut = c.statut || "actif";
     var pillClass = statut === "actif" ? "pill-green" : (statut === "en_attente" ? "pill-gold" : "pill-red");
-    var statutLabel = statut === "actif" ? "ACTIF" : (statut === "en_attente" ? "EN ATTENTE" : "DÉSACTIVÉ");
+    var statutLabel = statut === "actif" ? "ACTIF" : statut === "en_attente" ? "EN ATTENTE"
+      : statut === "impaye" ? "IMPAYÉ" : statut === "resilie" ? "RÉSILIÉ" : "DÉSACTIVÉ";
     var actionBtn;
     if (statut === "en_attente") {
-      actionBtn = '<button class="btn-action btn-gold" onclick="activateCompany(\''+escJsAttr(c.id)+'\')">✅ Activer</button>';
+      actionBtn = '<button class="btn-action btn-gold" onclick="openPaymentModal(\''+escJsAttr(c.id)+'\')">💳 Générer un lien de paiement</button>';
+    } else if (statut === "impaye" || statut === "resilie") {
+      actionBtn = '<button class="btn-action btn-gold" onclick="openPaymentModal(\''+escJsAttr(c.id)+'\')">🔗 Renvoyer un lien</button> '
+        + '<button class="btn-tbl danger" onclick="setCompanyStatut(\''+escJsAttr(c.id)+'\',\'inactif\')">⛔ Désactiver</button>';
     } else if (statut === "actif") {
       actionBtn = '<button class="btn-tbl danger" onclick="setCompanyStatut(\''+escJsAttr(c.id)+'\',\'inactif\')">⛔ Désactiver</button>';
     } else {
@@ -3126,14 +3156,81 @@ function renderCompaniesSection() {
     }
     var isMagencia = c.id === "magencia";
     var deleteBtn = isMagencia ? "" : '<button class="btn-tbl danger" onclick="deleteCompany(\''+escJsAttr(c.id)+'\',\''+escJsAttr(c.nom)+'\')" title="Supprimer définitivement">🗑️</button>';
+    var planLabel = c.plan ? ' <span class="pill" style="opacity:.7">'+esc(PLAN_LABELS[c.plan]||c.plan)+'</span>' : "";
     return '<tr>'+
       '<td>'+esc(c.nom)+'</td>'+
       '<td>'+esc(c.email_admin||"—")+'</td>'+
       '<td>'+esc(c.prefix||"—")+'</td>'+
-      '<td><span class="pill '+pillClass+'">'+statutLabel+'</span></td>'+
+      '<td><span class="pill '+pillClass+'">'+statutLabel+'</span>'+planLabel+'</td>'+
       '<td>'+actionBtn+' '+deleteBtn+'</td>'+
     '</tr>';
   }).join("");
+}
+
+// ── PAIEMENT STRIPE ──
+var paiementCompanyId = null;
+
+function openPaymentModal(id) {
+  var c = COMPANIES.find(function(x){ return x.id === id; });
+  if (!c) return;
+  paiementCompanyId = id;
+  document.getElementById("paiementTitle").textContent = "Lien de paiement — " + c.nom;
+  document.getElementById("paiementPlan").value = c.plan || "solo";
+  document.getElementById("paiementLienBloc").style.display = "none";
+  document.getElementById("paiementLien").value = "";
+  var btn = document.getElementById("paiementGenBtn");
+  btn.disabled = false; btn.textContent = "💳 Générer le lien";
+  document.getElementById("modalPaiement").classList.add("open");
+}
+
+async function generatePaymentLink() {
+  if (!paiementCompanyId) return;
+  var plan = document.getElementById("paiementPlan").value;
+  var btn = document.getElementById("paiementGenBtn");
+
+  // "Grande entreprise" = tarif sur devis, hors Stripe : on active
+  // directement le compte, la facturation se négocie séparément.
+  if (plan === "grande") {
+    if (!confirm("Cette formule est \"sur devis\" (hors Stripe).\n\nActiver directement l'accès de cette entreprise ?")) return;
+    var { error } = await supabase.from('entreprises').update({ statut: 'actif', plan: 'grande' }).eq('id', paiementCompanyId);
+    if (error) { alert("❌ Échec :\n" + frError(error)); return; }
+    closeModal('modalPaiement');
+    await loadCompanies();
+    renderCompanyBar();
+    renderCompaniesSection();
+    alert("✅ Entreprise activée (formule Grande entreprise, sur devis).");
+    return;
+  }
+
+  btn.disabled = true; btn.textContent = "Génération...";
+  try {
+    var { data: { session } } = await supabase.auth.getSession();
+    var res = await fetch(SUPABASE_URL + "/functions/v1/create-checkout-session", {
+      method: "POST",
+      headers: { "Authorization": "Bearer " + session.access_token, "Content-Type": "application/json" },
+      body: JSON.stringify({ company_id: paiementCompanyId, plan: plan })
+    });
+    var result = await res.json();
+    btn.disabled = false; btn.textContent = "💳 Générer le lien";
+    if (!res.ok) { alert("❌ Erreur : " + (result.error || "génération impossible")); return; }
+    document.getElementById("paiementLien").value = result.url;
+    document.getElementById("paiementLienBloc").style.display = "block";
+    await loadCompanies();
+    renderCompaniesSection();
+  } catch(e) {
+    btn.disabled = false; btn.textContent = "💳 Générer le lien";
+    alert("❌ Erreur : " + frError(e));
+  }
+}
+
+function copierLienPaiement() {
+  var input = document.getElementById("paiementLien");
+  input.select();
+  navigator.clipboard.writeText(input.value).then(function() {
+    alert("📋 Lien copié — tu peux maintenant le transmettre à l'entreprise (email, SMS...).");
+  }).catch(function() {
+    alert("Sélectionne le champ et copie-le manuellement (Cmd+C).");
+  });
 }
 
 async function activateCompany(id) {
