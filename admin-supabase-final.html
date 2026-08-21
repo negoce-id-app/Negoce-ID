@@ -3348,14 +3348,12 @@ function renderCompaniesSection() {
       return '<option value="'+p+'"'+sel+'>'+esc(PLAN_LABELS[p])+'</option>';
     }).join("");
     var planSelect = '<select class="filter-select" style="font-size:12px;padding:6px 8px" onchange="updateCompanyPlan(\''+escJsAttr(c.id)+'\', this.value)">'+planOptions+'</select>';
-    var siretInput = '<input type="text" class="filter-select" style="font-size:12px;padding:6px 8px;width:130px" value="'+esc(c.siret||"")+'" maxlength="14" placeholder="14 chiffres" '
-      + 'onkeydown="if(event.key===\'Enter\'){this.blur();}" '
-      + 'onblur="updateCompanySiret(\''+escJsAttr(c.id)+'\', this.value, this)">';
+    var siretCell = esc(c.siret||"—")+' <button class="btn-tbl" onclick="editCompanySiret(\''+escJsAttr(c.id)+'\')" title="Modifier le SIRET">✏️</button>';
     return '<tr>'+
       '<td>'+esc(c.nom)+'</td>'+
       '<td>'+esc(c.email_admin||"—")+'</td>'+
       '<td>'+esc(c.prefix||"—")+'</td>'+
-      '<td>'+siretInput+'</td>'+
+      '<td>'+siretCell+'</td>'+
       '<td>'+deptSelect+'</td>'+
       '<td>'+planSelect+'</td>'+
       '<td><span class="pill '+pillClass+'">'+statutLabel+'</span></td>'+
@@ -3375,28 +3373,32 @@ async function updateCompanyPlan(companyId, plan) {
   }
 }
 
-// SIRET modifiable directement dans le tableau (ex: correction d'une
-// erreur de saisie à la création). Contrôle le format (14 chiffres) avant
-// d'envoyer, et restaure l'ancienne valeur dans le champ si la mise à jour
-// échoue (ex: SIRET déjà utilisé par une autre entreprise — contrainte
-// d'unicité en base).
-async function updateCompanySiret(companyId, siret, inputEl) {
+// SIRET modifiable via le crayon ✏️ (même logique que la fiche salarié :
+// un clic ouvre une saisie dédiée plutôt qu'un champ toujours éditable
+// directement dans le tableau — évite toute modification accidentelle).
+function editCompanySiret(companyId) {
+  var c = COMPANIES.find(function(x){ return x.id === companyId; });
+  if (!c) return;
+  var next = prompt("Nouveau numéro SIRET pour \""+c.nom+"\" (14 chiffres) :", c.siret || "");
+  if (next === null) return; // annulé
+  updateCompanySiret(companyId, next);
+}
+
+async function updateCompanySiret(companyId, siret) {
   var c = COMPANIES.find(function(x){ return x.id === companyId; });
   var cleaned = String(siret || "").replace(/\s+/g, "");
   if (cleaned === (c ? (c.siret || "") : "")) return; // rien n'a changé
   if (cleaned && !/^[0-9]{14}$/.test(cleaned)) {
     alert("❌ Le SIRET doit contenir exactement 14 chiffres.");
-    if (inputEl && c) inputEl.value = c.siret || "";
     return;
   }
   try {
     var { error } = await supabase.from('entreprises').update({ siret: cleaned || null }).eq('id', companyId);
     if (error) throw error;
     if (c) c.siret = cleaned || null;
-    if (inputEl) inputEl.value = cleaned;
+    renderCompaniesSection();
   } catch(e) {
     alert("❌ Échec de la mise à jour du SIRET :\n" + frError(e));
-    if (inputEl && c) inputEl.value = c.siret || "";
   }
 }
 
