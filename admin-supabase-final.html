@@ -2375,7 +2375,9 @@ body{font-family:'Inter',sans-serif;background:var(--bg);min-height:100vh}
 .btn-gold{background:var(--orange);color:#fff}
 .btn-outline{background:transparent;border:1.5px solid var(--border);color:var(--navy)}
 
+.table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
 table{width:100%;border-collapse:collapse}
+.table-scroll table{min-width:920px}
 th{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;padding:8px 12px;text-align:left;border-bottom:1.5px solid var(--border)}
 td{font-size:13px;color:#374151;padding:10px 12px;border-bottom:1px solid var(--border)}
 tr:last-child td{border-bottom:none}
@@ -2643,10 +2645,10 @@ tr:hover td{background:#FAFBFF}
         <input class="filter-select" id="companySearch" type="text" placeholder="🔎 Rechercher une entreprise (nom, email, préfixe, SIRET)..." style="flex:1;min-width:260px" oninput="renderCompaniesSection()">
         <select class="filter-select" id="companyDeptFilter" style="max-width:220px" onchange="renderCompaniesSection()"></select>
       </div>
-      <table>
+      <div class="table-scroll"><table>
         <thead><tr><th>Entreprise</th><th>Email</th><th>Préfixe</th><th>SIRET</th><th>Département</th><th>Formule</th><th>Statut</th><th>Action</th></tr></thead>
         <tbody id="pendingBody"></tbody>
-      </table>
+      </table></div>
     </div>
 
     <div class="section" id="toolsSection" style="margin-top:20px">
@@ -2674,10 +2676,10 @@ tr:hover td{background:#FAFBFF}
         <input class="filter-select" id="negociantSearch" type="text" placeholder="🔎 Rechercher une agence (nom, email)..." style="flex:1;min-width:260px" oninput="renderNegociantsSection()">
         <select class="filter-select" id="negociantDeptFilter" style="max-width:220px" onchange="renderNegociantsSection()"></select>
       </div>
-      <table>
+      <div class="table-scroll"><table>
         <thead><tr><th>Logo</th><th>Agence</th><th>Département</th><th>Email</th><th>Lien de connexion</th><th>Action</th></tr></thead>
         <tbody id="negociantsBody"><tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">⏳ Chargement...</td></tr></tbody>
-      </table>
+      </table></div>
     </div>
   </div>
 </div>
