@@ -19,6 +19,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);min-height:100vh;displa
 .form-in{width:100%;padding:12px 14px;border:2px solid var(--border);border-radius:10px;font-size:14px;color:var(--navy);-webkit-appearance:none}
 .form-in:focus{outline:none;border-color:var(--gold)}
 .form-hint{font-size:11px;color:var(--muted);margin-top:5px}
+.siret-status{display:none;font-size:13px;line-height:1.5;margin:-4px 0 14px;padding:12px 14px;border-radius:10px;font-weight:600}
 .btn{width:100%;padding:14px;background:var(--navy);color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;margin-top:8px}
 .btn:disabled{opacity:0.5}
 .err{background:#FEE;color:#C62828;border-radius:8px;padding:10px;font-size:13px;margin-top:12px;display:none}
@@ -34,18 +35,22 @@ body{font-family:'Inter',sans-serif;background:var(--bg);min-height:100vh;displa
 
   <div id="formWrap">
     <div class="form-group">
+      <label class="form-lbl">Numéro SIRET</label>
+      <input class="form-in" id="fSiret" type="text" placeholder="123 456 789 00012" maxlength="17" inputmode="numeric" oninput="onSiretInput()">
+      <div class="form-hint">14 chiffres, disponible sur votre Kbis ou societe.com — le nom et le département sont détectés automatiquement</div>
+    </div>
+
+    <div class="siret-status" id="siretStatus"></div>
+
+    <div class="form-group" id="manualNomGroup" style="display:none">
       <label class="form-lbl">Nom de l'entreprise</label>
       <input class="form-in" id="fNom" type="text" placeholder="BTP Martin SAS">
     </div>
-    <div class="form-group">
-      <label class="form-lbl">Numéro SIRET</label>
-      <input class="form-in" id="fSiret" type="text" placeholder="123 456 789 00012" maxlength="17" inputmode="numeric">
-      <div class="form-hint">14 chiffres, disponible sur votre Kbis ou societe.com</div>
-    </div>
-    <div class="form-group">
+    <div class="form-group" id="manualDeptGroup" style="display:none">
       <label class="form-lbl">Département</label>
       <select class="form-in" id="fDept"></select>
     </div>
+
     <div class="form-group">
       <label class="form-lbl">Votre email</label>
       <input class="form-in" id="fEmail" type="email" placeholder="contact@entreprise.fr">
@@ -78,16 +83,105 @@ var SUPABASE_KEY = "sb_publishable_Hb6ILSc7bzW_sC6ZD2X7Nw_QP5homkU";
 var DEPARTEMENTS = "01|Ain,02|Aisne,03|Allier,04|Alpes-de-Haute-Provence,05|Hautes-Alpes,06|Alpes-Maritimes,07|Ardèche,08|Ardennes,09|Ariège,10|Aube,11|Aude,12|Aveyron,13|Bouches-du-Rhône,14|Calvados,15|Cantal,16|Charente,17|Charente-Maritime,18|Cher,19|Corrèze,2A|Corse-du-Sud,2B|Haute-Corse,21|Côte-d'Or,22|Côtes-d'Armor,23|Creuse,24|Dordogne,25|Doubs,26|Drôme,27|Eure,28|Eure-et-Loir,29|Finistère,30|Gard,31|Haute-Garonne,32|Gers,33|Gironde,34|Hérault,35|Ille-et-Vilaine,36|Indre,37|Indre-et-Loire,38|Isère,39|Jura,40|Landes,41|Loir-et-Cher,42|Loire,43|Haute-Loire,44|Loire-Atlantique,45|Loiret,46|Lot,47|Lot-et-Garonne,48|Lozère,49|Maine-et-Loire,50|Manche,51|Marne,52|Haute-Marne,53|Mayenne,54|Meurthe-et-Moselle,55|Meuse,56|Morbihan,57|Moselle,58|Nièvre,59|Nord,60|Oise,61|Orne,62|Pas-de-Calais,63|Puy-de-Dôme,64|Pyrénées-Atlantiques,65|Hautes-Pyrénées,66|Pyrénées-Orientales,67|Bas-Rhin,68|Haut-Rhin,69|Rhône,70|Haute-Saône,71|Saône-et-Loire,72|Sarthe,73|Savoie,74|Haute-Savoie,75|Paris,76|Seine-Maritime,77|Seine-et-Marne,78|Yvelines,79|Deux-Sèvres,80|Somme,81|Tarn,82|Tarn-et-Garonne,83|Var,84|Vaucluse,85|Vendée,86|Vienne,87|Haute-Vienne,88|Vosges,89|Yonne,90|Territoire de Belfort,91|Essonne,92|Hauts-de-Seine,93|Seine-Saint-Denis,94|Val-de-Marne,95|Val-d'Oise,971|Guadeloupe,972|Martinique,973|Guyane,974|La Réunion,976|Mayotte"
   .split(",").map(function(s){ var p = s.split("|"); return { code: p[0], nom: p[1] }; });
 
-(function fillDept() {
+var deptFilled = false;
+function fillDeptSelect() {
+  if (deptFilled) return;
   var sel = document.getElementById("fDept");
   sel.innerHTML = '<option value="">— Département —</option>' + DEPARTEMENTS.map(function(d) {
     return '<option value="'+d.code+'">'+d.code+' - '+d.nom+'</option>';
   }).join("");
-})();
+  deptFilled = true;
+}
+
+// Détection automatique via le SIRET : dès que 14 chiffres valides sont
+// saisis, on interroge la base officielle de l'État (API gratuite, sans
+// clé, la même que celle utilisée côté serveur pour valider les demandes).
+// Si l'établissement est trouvé, le nom et le département n'ont plus besoin
+// d'être tapés à la main. Si l'API échoue ou ne trouve rien (SIRET tout
+// juste attribué, pas encore indexé), on affiche les champs manuels en
+// secours — l'inscription reste possible dans tous les cas.
+var detected = { nom: null, departement: null };
+var siretTimer = null;
+
+function onSiretInput() {
+  clearTimeout(siretTimer);
+  var raw = document.getElementById("fSiret").value.replace(/\s+/g, "");
+  var statusEl = document.getElementById("siretStatus");
+  detected = { nom: null, departement: null };
+  document.getElementById("manualNomGroup").style.display = "none";
+  document.getElementById("manualDeptGroup").style.display = "none";
+  if (!/^[0-9]{14}$/.test(raw)) {
+    statusEl.style.display = "none";
+    return;
+  }
+  statusEl.style.display = "block";
+  statusEl.style.background = "#F2F4F8";
+  statusEl.style.color = "#7B8BAD";
+  statusEl.textContent = "🔍 Vérification du SIRET...";
+  siretTimer = setTimeout(function() { checkSiretLive(raw); }, 500);
+}
+
+function showManualFallback(msg) {
+  var statusEl = document.getElementById("siretStatus");
+  statusEl.style.background = "#FFF7E6";
+  statusEl.style.color = "#8A6116";
+  statusEl.textContent = msg;
+  document.getElementById("manualNomGroup").style.display = "block";
+  document.getElementById("manualDeptGroup").style.display = "block";
+  fillDeptSelect();
+}
+
+async function checkSiretLive(siret) {
+  var statusEl = document.getElementById("siretStatus");
+  // Vérifie que le SIRET saisi n'a pas changé pendant l'appel réseau.
+  var currentRaw = document.getElementById("fSiret").value.replace(/\s+/g, "");
+  if (currentRaw !== siret) return;
+  try {
+    // Passe par notre propre fonction relais (check-siret) plutôt que
+    // d'appeler directement l'API gouv.fr depuis le navigateur : cette
+    // dernière ne renvoie pas d'en-tête CORS exploitable par un site tiers,
+    // l'appel direct échoue donc systématiquement une fois déployé en ligne.
+    var res = await fetch(SUPABASE_URL + "/functions/v1/check-siret-ts?siret=" + siret, {
+      headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY }
+    });
+    if (!res.ok) { showManualFallback("❓ Vérification indisponible pour le moment — merci de compléter les champs ci-dessous."); return; }
+    var data = await res.json();
+    if (data.blocked) {
+      statusEl.style.background = "#FEE";
+      statusEl.style.color = "#C62828";
+      statusEl.textContent = "⚠️ " + data.blocked;
+      document.getElementById("manualNomGroup").style.display = "none";
+      document.getElementById("manualDeptGroup").style.display = "none";
+      return;
+    }
+    var nom = data.nom || null;
+    var dept = data.departement || null;
+    detected.nom = nom;
+    detected.departement = dept;
+    if (!nom) {
+      showManualFallback("❓ Établissement non trouvé automatiquement — merci de compléter les champs ci-dessous.");
+      return;
+    }
+    var deptEntry = dept ? DEPARTEMENTS.find(function(d){ return d.code === dept; }) : null;
+    statusEl.style.background = "#EDFBF3";
+    statusEl.style.color = "#0CAF60";
+    statusEl.textContent = "✅ " + nom + (deptEntry ? " — " + deptEntry.code + " (" + deptEntry.nom + ")" : "");
+    document.getElementById("manualNomGroup").style.display = "none";
+    if (!dept) {
+      document.getElementById("manualDeptGroup").style.display = "block";
+      fillDeptSelect();
+    } else {
+      document.getElementById("manualDeptGroup").style.display = "none";
+    }
+  } catch (e) {
+    showManualFallback("⚠️ Impossible de vérifier automatiquement (connexion) — merci de compléter les champs ci-dessous.");
+  }
+}
 
 async function submitForm() {
-  var nom = document.getElementById("fNom").value.trim();
   var siret = document.getElementById("fSiret").value.replace(/\s+/g, "");
+  var nom = detected.nom || document.getElementById("fNom").value.trim();
+  var departement = detected.departement || document.getElementById("fDept").value;
   var email = document.getElementById("fEmail").value.trim().toLowerCase();
   var pwd1 = document.getElementById("fPwd1").value;
   var pwd2 = document.getElementById("fPwd2").value;
@@ -127,7 +221,7 @@ async function submitForm() {
         "apikey": SUPABASE_KEY,
         "Authorization": "Bearer " + SUPABASE_KEY
       },
-      body: JSON.stringify({ nom: nom, siret: siret, departement: document.getElementById("fDept").value, email: email, password: pwd1 })
+      body: JSON.stringify({ nom: nom, siret: siret, departement: departement, email: email, password: pwd1 })
     });
     var data = await res.json();
     btn.disabled = false;
