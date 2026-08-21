@@ -2773,6 +2773,11 @@ tr:hover td{background:#FAFBFF}
     <div class="form-group">
       <label class="form-lbl">Numéro SIRET</label>
       <input class="form-in" id="companySiret" type="text" placeholder="123 456 789 00012" maxlength="17" inputmode="numeric">
+      <div style="font-size:11px;color:var(--muted);margin-top:5px">Le département se déduit automatiquement du SIRET — laisse "— Détecter automatiquement —" sauf besoin particulier.</div>
+    </div>
+    <div class="form-group">
+      <label class="form-lbl">Département</label>
+      <select class="form-in" id="companyDeptField"></select>
     </div>
     <div class="form-group">
       <label class="form-lbl">Email admin</label>
@@ -3931,6 +3936,9 @@ function openAddCompany() {
   document.getElementById("companyNom").value = "";
   document.getElementById("companyPrefix").value = "";
   document.getElementById("companySiret").value = "";
+  document.getElementById("companyDeptField").innerHTML = '<option value="">— Détecter automatiquement —</option>' + DEPARTEMENTS.map(function(d) {
+    return '<option value="'+d.code+'">'+d.code+' - '+esc(d.nom)+'</option>';
+  }).join("");
   document.getElementById("companyEmail").value = "";
   document.getElementById("companyPwd").value = "";
   document.getElementById("modalCompany").classList.add("open");
@@ -3940,6 +3948,7 @@ async function saveCompany() {
   var nom = document.getElementById("companyNom").value.trim();
   var prefix = document.getElementById("companyPrefix").value.trim().toUpperCase();
   var siret = normalizeSiret(document.getElementById("companySiret").value);
+  var departement = document.getElementById("companyDeptField").value;
   var email = document.getElementById("companyEmail").value.trim();
   var pwd = document.getElementById("companyPwd").value;
   if (!nom || !prefix || !siret || !email || !pwd) { alert("Tous les champs sont obligatoires (y compris SIRET, email et mot de passe admin)."); return; }
@@ -3953,12 +3962,12 @@ async function saveCompany() {
     var res = await fetch(SUPABASE_URL + "/functions/v1/create-company", {
       method: "POST",
       headers: { "Authorization": "Bearer " + session.access_token, "Content-Type": "application/json" },
-      body: JSON.stringify({ nom: nom, prefix: prefix, siret: siret, email: email, password: pwd })
+      body: JSON.stringify({ nom: nom, prefix: prefix, siret: siret, departement: departement, email: email, password: pwd })
     });
     var result = await res.json();
     if (btn) { btn.disabled = false; btn.textContent = "💾 Créer l'entreprise"; }
     if (!res.ok) { alert("❌ Erreur : " + (result.error || "création impossible")); return; }
-    COMPANIES.push({id: result.id, nom:nom, prefix:prefix, siret:siret, email_admin:email});
+    COMPANIES.push({id: result.id, nom:nom, prefix:prefix, siret:siret, departement: result.departement || departement || null, email_admin:email});
   } catch(e) {
     if (btn) { btn.disabled = false; btn.textContent = "💾 Créer l'entreprise"; }
     alert("❌ Erreur lors de la création : " + frError(e));
