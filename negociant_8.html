@@ -248,6 +248,15 @@ body{font-family:'Inter',sans-serif;background:var(--bg);display:flex;flex-direc
   <div class="err" id="forcePwdErr" style="display:none;max-width:300px"></div>
 </div>
 
+<!-- COMPTE EN ATTENTE DE VALIDATION (inscription publique pas encore
+     approuvée par le super admin) -->
+<div class="screen hidden" id="sPendingNego" style="align-items:center;justify-content:center;padding:28px 24px;text-align:center">
+  <div class="brand-mark">⏳</div>
+  <div class="login-h">Compte en attente de validation</div>
+  <div class="login-p">Votre demande d'inscription a bien été reçue. Nous validons votre agence sous 24h ouvrées — vous recevrez un message de confirmation dès que votre accès au scanner sera activé.</div>
+  <button class="btn-login" onclick="logout()" style="margin-top:16px">Se déconnecter</button>
+</div>
+
 <!-- TABS -->
 <div class="hidden" id="tabBar" style="padding:14px 0 0">
   <div class="tabs">
@@ -265,6 +274,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);display:flex;flex-direc
       <div class="v-icon" id="vIcon">✅</div>
       <div class="v-text" id="vText">AUTORISÉ</div>
       <div class="v-sub" id="vSub"></div>
+      <div id="vConfirm" style="display:none;margin-top:8px;padding:8px 14px;background:rgba(255,106,26,0.15);color:#FF6A1A;border-radius:8px;font-weight:700;font-size:14px;text-align:center"></div>
     </div>
     <div class="detail">
       <div class="d-lbl">Identité</div>
@@ -581,12 +591,17 @@ async function loginNego() {
   // vaut refuser l'accès et laisser réessayer que de laisser passer un
   // compte qui devait encore changer son mot de passe provisoire.
   var mustChange = false;
+  var pending = false;
   var appUserChecked = false;
   try {
     var { data: appUser, error: appUserErr } = await supabase.rpc('current_app_user');
     if (appUserErr) throw appUserErr;
     appUserChecked = true;
     mustChange = !!(appUser && appUser.must_change_password);
+    // Compte créé via l'inscription publique (request-negociant), pas
+    // encore validé par le super admin. "actif" par défaut pour les
+    // comptes déjà existants avant cette fonctionnalité.
+    pending = !!(appUser && appUser.statut && appUser.statut !== "actif");
     // Identifiant du compte, nécessaire pour que le négociant puisse
     // envoyer son logo dans SON propre dossier du bucket Storage.
     currentNegoAuthUserId = appUser ? appUser.auth_user_id : null;
@@ -597,6 +612,11 @@ async function loginNego() {
     document.getElementById("sLogin").classList.remove("hidden");
     err.textContent = "❌ Connexion au serveur impossible — réessayez";
     err.style.display = "block";
+    return;
+  }
+
+  if (pending) {
+    document.getElementById("sPendingNego").classList.remove("hidden");
     return;
   }
 
@@ -1025,6 +1045,18 @@ async function showResult(code, pin) {
   document.getElementById("vSub").textContent = ok
     ? "Salarié autorisé à passer commande"
     : (motifLabels[motif] || (!user ? "Code non reconnu" : user.statut === "INACTIF" ? "Compte inactif" : "Aucun chantier autorisé"));
+
+  // Code de confirmation : à comparer avec celui affiché sur le téléphone
+  // du salarié (si sa carte est ouverte au même moment) — signal de
+  // confiance supplémentaire, non bloquant.
+  var vConfirmEl = document.getElementById("vConfirm");
+  if (ok && row && row.confirm_code) {
+    vConfirmEl.textContent = "🔑 Code à comparer avec le téléphone du salarié : " + row.confirm_code;
+    vConfirmEl.style.display = "block";
+  } else {
+    vConfirmEl.style.display = "none";
+  }
+
   document.getElementById("dCompany").textContent = companyName;
   document.getElementById("dName").textContent = user ? user.nom : "Inconnu";
   document.getElementById("dSub").textContent = user ? user.poste : "—";
@@ -1323,6 +1355,7 @@ async function logout() {
   document.getElementById("sHistorique").classList.add("hidden");
   document.getElementById("sDemandesNego").classList.add("hidden");
   document.getElementById("sForcePwdNego").classList.add("hidden");
+  document.getElementById("sPendingNego").classList.add("hidden");
   document.getElementById("sLogin").classList.remove("hidden");
   await supabase.auth.signOut();
 }
