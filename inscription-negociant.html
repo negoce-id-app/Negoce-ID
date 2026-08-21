@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NégoceID — Inscrire mon agence</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--navy:#0F1F3D;--gold:#D4A843;--bg:#F2F4F8;--white:#fff;--muted:#7B8BAD;--border:#E4E8F0;--shadow:0 2px 20px rgba(15,31,61,0.10)}
+body{font-family:'Inter',sans-serif;background:var(--bg);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+.card{background:var(--white);border-radius:20px;padding:36px;width:100%;max-width:420px;box-shadow:var(--shadow)}
+.logo{font-size:22px;font-weight:900;color:var(--navy);text-align:center;margin-bottom:4px}
+.logo em{color:var(--gold);font-style:normal}
+.sub{font-size:13px;color:var(--muted);text-align:center;margin-bottom:26px}
+.form-group{margin-bottom:14px}
+.form-lbl{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px;display:block}
+.form-in{width:100%;padding:12px 14px;border:2px solid var(--border);border-radius:10px;font-size:14px;color:var(--navy);-webkit-appearance:none}
+.form-in:focus{outline:none;border-color:var(--gold)}
+.form-hint{font-size:11px;color:var(--muted);margin-top:5px}
+.btn{width:100%;padding:14px;background:var(--navy);color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;margin-top:8px}
+.btn:disabled{opacity:0.5}
+.err{background:#FEE;color:#C62828;border-radius:8px;padding:10px;font-size:13px;margin-top:12px;display:none}
+.ok{background:#EDFBF3;color:#0CAF60;border-radius:12px;padding:20px;font-size:14px;line-height:1.6;text-align:center;display:none}
+.ok b{display:block;font-size:17px;margin-bottom:6px}
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="logo">Négoce<em>ID</em></div>
+  <div class="sub">Inscrivez votre agence négociant</div>
+
+  <div id="formWrap">
+    <div class="form-group">
+      <label class="form-lbl">Nom de l'agence</label>
+      <input class="form-in" id="fAgence" type="text" placeholder="ex : NOZ Brioude">
+    </div>
+    <div class="form-group">
+      <label class="form-lbl">Numéro SIRET</label>
+      <input class="form-in" id="fSiret" type="text" placeholder="123 456 789 00012" maxlength="17" inputmode="numeric">
+      <div class="form-hint">14 chiffres, disponible sur votre Kbis ou societe.com</div>
+    </div>
+    <div class="form-group">
+      <label class="form-lbl">Votre email</label>
+      <input class="form-in" id="fEmail" type="email" placeholder="agence@exemple.fr">
+    </div>
+    <div class="form-group">
+      <label class="form-lbl">Mot de passe</label>
+      <input class="form-in" id="fPwd1" type="password" placeholder="8 caractères minimum">
+    </div>
+    <div class="form-group">
+      <label class="form-lbl">Confirmez le mot de passe</label>
+      <input class="form-in" id="fPwd2" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')submitForm()">
+    </div>
+    <button class="btn" id="submitBtn" onclick="submitForm()">Inscrire mon agence →</button>
+    <div class="err" id="errMsg"></div>
+  </div>
+
+  <div class="ok" id="okMsg">
+    <b>✅ Demande envoyée</b>
+    Merci ! Votre demande a bien été reçue.<br>
+    Nous validons votre agence sous 24h ouvrées, vous recevrez un message de confirmation.
+  </div>
+</div>
+
+<script>
+var SUPABASE_URL = "https://rzveghiwbjafmfhrfscb.supabase.co";
+var SUPABASE_KEY = "sb_publishable_Hb6ILSc7bzW_sC6ZD2X7Nw_QP5homkU";
+
+async function submitForm() {
+  var agence = document.getElementById("fAgence").value.trim();
+  var siret = document.getElementById("fSiret").value.replace(/\s+/g, "");
+  var email = document.getElementById("fEmail").value.trim().toLowerCase();
+  var pwd1 = document.getElementById("fPwd1").value;
+  var pwd2 = document.getElementById("fPwd2").value;
+  var errEl = document.getElementById("errMsg");
+  errEl.style.display = "none";
+
+  if (!agence || !siret || !email || !pwd1) {
+    errEl.textContent = "❌ Merci de remplir tous les champs";
+    errEl.style.display = "block";
+    return;
+  }
+  if (!/^[0-9]{14}$/.test(siret)) {
+    errEl.textContent = "❌ Le numéro SIRET doit contenir 14 chiffres";
+    errEl.style.display = "block";
+    return;
+  }
+  if (pwd1.length < 8) {
+    errEl.textContent = "❌ Le mot de passe doit faire au moins 8 caractères";
+    errEl.style.display = "block";
+    return;
+  }
+  if (pwd1 !== pwd2) {
+    errEl.textContent = "❌ Les mots de passe ne correspondent pas";
+    errEl.style.display = "block";
+    return;
+  }
+
+  var btn = document.getElementById("submitBtn");
+  btn.disabled = true;
+  btn.textContent = "Envoi en cours...";
+
+  try {
+    var res = await fetch(SUPABASE_URL + "/functions/v1/request-negociant", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": SUPABASE_KEY,
+        "Authorization": "Bearer " + SUPABASE_KEY
+      },
+      body: JSON.stringify({ agence: agence, siret: siret, email: email, password: pwd1 })
+    });
+    var data = await res.json();
+    btn.disabled = false;
+    btn.textContent = "Inscrire mon agence →";
+
+    if (!res.ok || data.error) {
+      errEl.textContent = "❌ " + (data.error || "Une erreur est survenue");
+      errEl.style.display = "block";
+      return;
+    }
+
+    document.getElementById("formWrap").style.display = "none";
+    document.getElementById("okMsg").style.display = "block";
+  } catch (e) {
+    btn.disabled = false;
+    btn.textContent = "Inscrire mon agence →";
+    errEl.textContent = "❌ Erreur de connexion, réessayez";
+    errEl.style.display = "block";
+  }
+}
+</script>
+</body>
+</html>
