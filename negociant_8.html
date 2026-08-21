@@ -349,6 +349,14 @@ body{font-family:'Inter',sans-serif;background:var(--bg);display:flex;flex-direc
       </div>
       <div class="cam-st" id="camSt">Pointez vers le QR du salarié</div>
     </div>
+    <div class="manual-card">
+      <div class="box-lbl">⌨️ Pas de douchette ni de caméra ?</div>
+      <div style="font-size:12px;color:var(--muted);margin:6px 0 10px">Tapez le code du salarié à la main, puis comparez le code de confirmation affiché avec celui sur son téléphone.</div>
+      <div style="display:flex;gap:8px">
+        <input class="bl-input" id="manualCodeInput" type="text" placeholder="Code salarié (ex: MAG-123456)" autocomplete="off" autocorrect="off" spellcheck="false" style="flex:1;text-transform:uppercase" onkeydown="if(event.key==='Enter')submitManualCode()">
+        <button class="btn-cam" style="width:auto;padding:0 18px" onclick="submitManualCode()">Vérifier</button>
+      </div>
+    </div>
     <div class="manual-card" style="display:flex;flex-direction:column;justify-content:center">
       <div class="box-lbl">📊 Aujourd'hui</div>
       <div style="display:flex;gap:20px;margin-top:4px">
@@ -905,6 +913,17 @@ document.addEventListener("keydown", function(e) {
   }
   if (e.key && e.key.length === 1) scanBuffer += e.key;
 });
+
+// Saisie manuelle du code (pas de douchette, pas de caméra) — passe
+// par le même showResult() que la douchette/caméra, donc le code de
+// confirmation à comparer avec le téléphone du salarié s'affiche pareil.
+function submitManualCode() {
+  var input = document.getElementById("manualCodeInput");
+  var code = input.value.trim().toUpperCase();
+  if (!code) return;
+  input.value = "";
+  showResult(code);
+}
 
 // Extrait le code salarié depuis le contenu brut d'un QR (ou d'une saisie/scan USB) :
 // si c'est une URL contenant un paramètre "v", on l'utilise ; sinon on prend le texte tel quel.
