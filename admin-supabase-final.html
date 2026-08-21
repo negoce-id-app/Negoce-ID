@@ -2641,9 +2641,10 @@ tr:hover td{background:#FAFBFF}
       </div>
       <div class="filter-row">
         <input class="filter-select" id="companySearch" type="text" placeholder="🔎 Rechercher une entreprise (nom, email, préfixe, SIRET)..." style="flex:1;min-width:260px" oninput="renderCompaniesSection()">
+        <select class="filter-select" id="companyDeptFilter" style="max-width:220px" onchange="renderCompaniesSection()"></select>
       </div>
       <table>
-        <thead><tr><th>Entreprise</th><th>Email</th><th>Préfixe</th><th>Statut</th><th>Action</th></tr></thead>
+        <thead><tr><th>Entreprise</th><th>Email</th><th>Préfixe</th><th>Département</th><th>Statut</th><th>Action</th></tr></thead>
         <tbody id="pendingBody"></tbody>
       </table>
     </div>
@@ -2671,9 +2672,10 @@ tr:hover td{background:#FAFBFF}
       </div>
       <div class="filter-row">
         <input class="filter-select" id="negociantSearch" type="text" placeholder="🔎 Rechercher une agence (nom, email)..." style="flex:1;min-width:260px" oninput="renderNegociantsSection()">
+        <select class="filter-select" id="negociantDeptFilter" style="max-width:220px" onchange="renderNegociantsSection()"></select>
       </div>
       <table>
-        <thead><tr><th>Logo</th><th>Agence</th><th>Email</th><th>Lien de connexion</th><th>Action</th></tr></thead>
+        <thead><tr><th>Logo</th><th>Agence</th><th>Département</th><th>Email</th><th>Lien de connexion</th><th>Action</th></tr></thead>
         <tbody id="negociantsBody"><tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">⏳ Chargement...</td></tr></tbody>
       </table>
     </div>
@@ -2800,6 +2802,10 @@ tr:hover td{background:#FAFBFF}
       <input class="form-in" id="negSiret" type="text" placeholder="123 456 789 00012" maxlength="17" inputmode="numeric">
     </div>
     <div class="form-group">
+      <label class="form-lbl">Département</label>
+      <select class="form-in" id="negDept"></select>
+    </div>
+    <div class="form-group">
       <label class="form-lbl">Email de connexion</label>
       <input class="form-in" id="negEmail" type="email" placeholder="agence@exemple.fr">
     </div>
@@ -2846,6 +2852,20 @@ var SUPABASE_KEY = "sb_publishable_Hb6ILSc7bzW_sC6ZD2X7Nw_QP5homkU";
 // Entreprises chargées depuis Supabase
 var COMPANIES = [];
 var NEGOCIANTS = [];
+
+// Liste officielle des 101 départements français (code|nom), utilisée pour
+// les filtres et champs "Département" des entreprises et négociants.
+var DEPARTEMENTS = "01|Ain,02|Aisne,03|Allier,04|Alpes-de-Haute-Provence,05|Hautes-Alpes,06|Alpes-Maritimes,07|Ardèche,08|Ardennes,09|Ariège,10|Aube,11|Aude,12|Aveyron,13|Bouches-du-Rhône,14|Calvados,15|Cantal,16|Charente,17|Charente-Maritime,18|Cher,19|Corrèze,2A|Corse-du-Sud,2B|Haute-Corse,21|Côte-d'Or,22|Côtes-d'Armor,23|Creuse,24|Dordogne,25|Doubs,26|Drôme,27|Eure,28|Eure-et-Loir,29|Finistère,30|Gard,31|Haute-Garonne,32|Gers,33|Gironde,34|Hérault,35|Ille-et-Vilaine,36|Indre,37|Indre-et-Loire,38|Isère,39|Jura,40|Landes,41|Loir-et-Cher,42|Loire,43|Haute-Loire,44|Loire-Atlantique,45|Loiret,46|Lot,47|Lot-et-Garonne,48|Lozère,49|Maine-et-Loire,50|Manche,51|Marne,52|Haute-Marne,53|Mayenne,54|Meurthe-et-Moselle,55|Meuse,56|Morbihan,57|Moselle,58|Nièvre,59|Nord,60|Oise,61|Orne,62|Pas-de-Calais,63|Puy-de-Dôme,64|Pyrénées-Atlantiques,65|Hautes-Pyrénées,66|Pyrénées-Orientales,67|Bas-Rhin,68|Haut-Rhin,69|Rhône,70|Haute-Saône,71|Saône-et-Loire,72|Sarthe,73|Savoie,74|Haute-Savoie,75|Paris,76|Seine-Maritime,77|Seine-et-Marne,78|Yvelines,79|Deux-Sèvres,80|Somme,81|Tarn,82|Tarn-et-Garonne,83|Var,84|Vaucluse,85|Vendée,86|Vienne,87|Haute-Vienne,88|Vosges,89|Yonne,90|Territoire de Belfort,91|Essonne,92|Hauts-de-Seine,93|Seine-Saint-Denis,94|Val-de-Marne,95|Val-d'Oise,971|Guadeloupe,972|Martinique,973|Guyane,974|La Réunion,976|Mayotte"
+  .split(",").map(function(s){ var p = s.split("|"); return { code: p[0], nom: p[1] }; });
+
+function departementOptions(selected, withAll) {
+  var html = withAll ? '<option value="">Tous les départements</option>' : '<option value="">— Département —</option>';
+  html += DEPARTEMENTS.map(function(d) {
+    var sel = d.code === selected ? " selected" : "";
+    return '<option value="'+d.code+'"'+sel+'>'+d.code+' - '+esc(d.nom)+'</option>';
+  }).join("");
+  return html;
+}
 var currentCompany = null;
 var salaries = [];
 var passages = [];
@@ -3066,25 +3086,33 @@ async function loadNegociants() {
     renderNegociantsSection();
   } catch(e) {
     console.error("loadNegociants error", e);
-    body.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">⚠️ Erreur de chargement</td></tr>';
+    body.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px">⚠️ Erreur de chargement</td></tr>';
   }
 }
 
 function renderNegociantsSection() {
   var body = document.getElementById("negociantsBody");
   if (!body) return;
+  var deptEl = document.getElementById("negociantDeptFilter");
+  if (deptEl && !deptEl.dataset.filled) {
+    deptEl.innerHTML = departementOptions("", true);
+    deptEl.dataset.filled = "1";
+  }
   if (NEGOCIANTS.length === 0) {
-    body.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">Aucune agence négociant — cliquez sur "+ Nouvelle agence"</td></tr>';
+    body.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px">Aucune agence négociant — cliquez sur "+ Nouvelle agence"</td></tr>';
     return;
   }
   var searchEl = document.getElementById("negociantSearch");
   var q = searchEl ? searchEl.value.trim().toLowerCase() : "";
-  var list = !q ? NEGOCIANTS : NEGOCIANTS.filter(function(n) {
+  var deptQ = deptEl ? deptEl.value : "";
+  var list = NEGOCIANTS.filter(function(n) {
+    if (deptQ && n.departement !== deptQ) return false;
+    if (!q) return true;
     return (n.agence||"").toLowerCase().indexOf(q) !== -1
       || (n.email||"").toLowerCase().indexOf(q) !== -1;
   });
   if (list.length === 0) {
-    body.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">Aucune agence trouvée</td></tr>';
+    body.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px">Aucune agence trouvée</td></tr>';
     return;
   }
   try {
@@ -3112,6 +3140,7 @@ function renderNegociantsSection() {
           '<button class="btn-tbl" style="margin-top:4px" onclick="document.getElementById(\'negLogoFile_'+esc(n.auth_user_id)+'\').click()">'+(n.logo_url?"✏️ Changer":"➕ Logo")+'</button>'+
         '</td>'+
         '<td>'+esc(n.agence)+' '+statutPill+'</td>'+
+        '<td>'+esc(n.departement||"—")+'</td>'+
         '<td>'+esc(n.email||"—")+'</td>'+
         '<td><code style="font-size:10px;word-break:break-all">'+esc(link)+'</code></td>'+
         '<td>'+
@@ -3201,6 +3230,7 @@ function copyNegociantLink(link) {
 function openAddNegociant() {
   document.getElementById("negAgence").value = "";
   document.getElementById("negSiret").value = "";
+  document.getElementById("negDept").innerHTML = departementOptions("", false);
   document.getElementById("negEmail").value = "";
   document.getElementById("negPwd").value = "";
   document.getElementById("modalNegociant").classList.add("open");
@@ -3209,6 +3239,7 @@ function openAddNegociant() {
 async function saveNegociant() {
   var agence = document.getElementById("negAgence").value.trim();
   var siret = normalizeSiret(document.getElementById("negSiret").value);
+  var departement = document.getElementById("negDept").value;
   var email = document.getElementById("negEmail").value.trim();
   var pwd = document.getElementById("negPwd").value;
   if (!agence || !siret || !email || !pwd) { alert("Tous les champs sont obligatoires (y compris le SIRET)."); return; }
@@ -3221,7 +3252,7 @@ async function saveNegociant() {
     var res = await fetch(SUPABASE_URL + "/functions/v1/create-negociant", {
       method: "POST",
       headers: { "Authorization": "Bearer " + session.access_token, "Content-Type": "application/json" },
-      body: JSON.stringify({ agence: agence, siret: siret, email: email, password: pwd })
+      body: JSON.stringify({ agence: agence, siret: siret, departement: departement, email: email, password: pwd })
     });
     var result = await res.json();
     if (btn) { btn.disabled = false; btn.textContent = "💾 Créer l'agence"; }
@@ -3241,10 +3272,17 @@ function renderCompaniesSection() {
   updatePendingBadge();
   var body = document.getElementById("pendingBody");
   if (!body) return;
+  var deptFilterEl = document.getElementById("companyDeptFilter");
+  if (deptFilterEl && !deptFilterEl.dataset.filled) {
+    deptFilterEl.innerHTML = departementOptions("", true);
+    deptFilterEl.dataset.filled = "1";
+  }
+  var deptQ = deptFilterEl ? deptFilterEl.value : "";
   var searchEl = document.getElementById("companySearch");
   var q = searchEl ? searchEl.value.trim().toLowerCase() : "";
   var qSiret = q.replace(/\s+/g, "");
   var filtered = COMPANIES.filter(function(c) {
+    if (deptQ && c.departement !== deptQ) return false;
     if (!q) return true;
     return (c.nom||"").toLowerCase().indexOf(q) !== -1
       || (c.email_admin||"").toLowerCase().indexOf(q) !== -1
@@ -3252,7 +3290,7 @@ function renderCompaniesSection() {
       || (qSiret && (c.siret||"").replace(/\s+/g, "").indexOf(qSiret) !== -1);
   });
   if (filtered.length === 0) {
-    body.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">Aucune entreprise trouvée</td></tr>';
+    body.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px">Aucune entreprise trouvée</td></tr>';
     return;
   }
   var PLAN_LABELS = { solo: "Indépendant", petite: "Petite entreprise", entreprise: "Entreprise", grande: "Grande entreprise" };
@@ -3275,14 +3313,27 @@ function renderCompaniesSection() {
     var isMagencia = c.id === "magencia";
     var deleteBtn = isMagencia ? "" : '<button class="btn-tbl danger" onclick="deleteCompany(\''+escJsAttr(c.id)+'\',\''+escJsAttr(c.nom)+'\')" title="Supprimer définitivement">🗑️</button>';
     var planLabel = c.plan ? ' <span class="pill" style="opacity:.7">'+esc(PLAN_LABELS[c.plan]||c.plan)+'</span>' : "";
+    var deptSelect = '<select class="filter-select" style="font-size:12px;padding:6px 8px" onchange="updateCompanyDept(\''+escJsAttr(c.id)+'\', this.value)">'+departementOptions(c.departement||"", true)+'</select>';
     return '<tr>'+
       '<td>'+esc(c.nom)+'</td>'+
       '<td>'+esc(c.email_admin||"—")+'</td>'+
       '<td>'+esc(c.prefix||"—")+'</td>'+
+      '<td>'+deptSelect+'</td>'+
       '<td><span class="pill '+pillClass+'">'+statutLabel+'</span>'+planLabel+'</td>'+
       '<td>'+actionBtn+' '+deleteBtn+'</td>'+
     '</tr>';
   }).join("");
+}
+
+async function updateCompanyDept(companyId, departement) {
+  try {
+    var { error } = await supabase.from('entreprises').update({ departement: departement || null }).eq('id', companyId);
+    if (error) throw error;
+    var c = COMPANIES.find(function(x){ return x.id === companyId; });
+    if (c) c.departement = departement || null;
+  } catch(e) {
+    alert("❌ Échec de la mise à jour du département :\n" + frError(e));
+  }
 }
 
 // ── PAIEMENT STRIPE ──
