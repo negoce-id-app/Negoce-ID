@@ -2669,6 +2669,9 @@ tr:hover td{background:#FAFBFF}
           <button class="btn-action btn-gold" onclick="openAddNegociant()">+ Nouvelle agence</button>
         </div>
       </div>
+      <div class="filter-row">
+        <input class="filter-select" id="negociantSearch" type="text" placeholder="🔎 Rechercher une agence (nom, email)..." style="flex:1;min-width:260px" oninput="renderNegociantsSection()">
+      </div>
       <table>
         <thead><tr><th>Logo</th><th>Agence</th><th>Email</th><th>Lien de connexion</th><th>Action</th></tr></thead>
         <tbody id="negociantsBody"><tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">⏳ Chargement...</td></tr></tbody>
@@ -2842,6 +2845,7 @@ var SUPABASE_KEY = "sb_publishable_Hb6ILSc7bzW_sC6ZD2X7Nw_QP5homkU";
 
 // Entreprises chargées depuis Supabase
 var COMPANIES = [];
+var NEGOCIANTS = [];
 var currentCompany = null;
 var salaries = [];
 var passages = [];
@@ -3056,13 +3060,34 @@ async function loadNegociants() {
   try {
     var { data, error } = await supabase.rpc('list_negociants_admin');
     if (error) throw error;
-    var list = Array.isArray(data) ? data : [];
-    if (list.length === 0) {
-      body.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">Aucune agence négociant — cliquez sur "+ Nouvelle agence"</td></tr>';
-      return;
-    }
-    negociantsPendingCount = list.filter(function(n){ return n.statut === "en_attente"; }).length;
+    NEGOCIANTS = Array.isArray(data) ? data : [];
+    negociantsPendingCount = NEGOCIANTS.filter(function(n){ return n.statut === "en_attente"; }).length;
     updateNegociantLoginBadge();
+    renderNegociantsSection();
+  } catch(e) {
+    console.error("loadNegociants error", e);
+    body.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">⚠️ Erreur de chargement</td></tr>';
+  }
+}
+
+function renderNegociantsSection() {
+  var body = document.getElementById("negociantsBody");
+  if (!body) return;
+  if (NEGOCIANTS.length === 0) {
+    body.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">Aucune agence négociant — cliquez sur "+ Nouvelle agence"</td></tr>';
+    return;
+  }
+  var searchEl = document.getElementById("negociantSearch");
+  var q = searchEl ? searchEl.value.trim().toLowerCase() : "";
+  var list = !q ? NEGOCIANTS : NEGOCIANTS.filter(function(n) {
+    return (n.agence||"").toLowerCase().indexOf(q) !== -1
+      || (n.email||"").toLowerCase().indexOf(q) !== -1;
+  });
+  if (list.length === 0) {
+    body.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">Aucune agence trouvée</td></tr>';
+    return;
+  }
+  try {
     var baseUrl = window.location.origin + window.location.pathname.replace(/admin-supabase-final\.html$/, "");
     body.innerHTML = list.map(function(n) {
       var link = baseUrl + "negociant_8.html?nego=" + encodeURIComponent(n.agence);
@@ -3098,7 +3123,7 @@ async function loadNegociants() {
       '</tr>';
     }).join("");
   } catch(e) {
-    console.error("loadNegociants error", e);
+    console.error("renderNegociantsSection error", e);
     body.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">⚠️ Erreur de chargement</td></tr>';
   }
 }
