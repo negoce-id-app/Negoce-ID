@@ -141,7 +141,7 @@ async function checkSiretLive(siret) {
     // d'appeler directement l'API gouv.fr depuis le navigateur : cette
     // dernière ne renvoie pas d'en-tête CORS exploitable par un site tiers,
     // l'appel direct échoue donc systématiquement une fois déployé en ligne.
-    var res = await fetch(SUPABASE_URL + "/functions/v1/check-siret?siret=" + siret, {
+    var res = await fetch(SUPABASE_URL + "/functions/v1/check-siret-ts?siret=" + siret, {
       headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY }
     });
     if (!res.ok) { showManualFallback("❓ Vérification indisponible pour le moment — merci de compléter les champs ci-dessous."); return; }
