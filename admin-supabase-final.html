@@ -2607,6 +2607,29 @@ tr:hover td{background:#FAFBFF}
         <tbody id="passagesBody"><tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">⏳ Chargement...</td></tr></tbody>
       </table>
     </div>
+
+    <!-- FOURNISSEURS -->
+    <div class="section">
+      <div class="section-hdr">
+        <div class="section-title">🏪 Fournisseurs habituels</div>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:14px">
+        Ces négociants seront proposés à vos salariés dans l'écran "Demande" de leur carte, pour envoyer une demande à l'avance. Ça ne limite pas où ils peuvent retirer leurs marchandises — la vérification en magasin reste possible chez n'importe quel négociant partenaire.
+      </div>
+      <div class="filter-row">
+        <select class="filter-select" id="fournisseurAddSelect" style="flex:1;min-width:220px">
+          <option value="">Choisir un négociant à ajouter...</option>
+        </select>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);white-space:nowrap">
+          <input type="checkbox" id="fournisseurAddEnCompte" checked> En compte
+        </label>
+        <button class="btn-action btn-gold" onclick="addFournisseur()">+ Ajouter</button>
+      </div>
+      <table>
+        <thead><tr><th>Négociant</th><th>En compte</th><th>Action</th></tr></thead>
+        <tbody id="fournisseursBody"><tr><td colspan="3" style="text-align:center;color:var(--muted);padding:24px">⏳ Chargement...</td></tr></tbody>
+      </table>
+    </div>
   </div>
 
   <!-- VUE : GESTION DES ENTREPRISES (super admin) -->
@@ -3514,6 +3537,72 @@ function selectCompany(company) {
   if (tab) tab.classList.add("active");
   loadData();
   subscribeToPassages();
+  loadFournisseurs();
+}
+
+// ── FOURNISSEURS (liste de négociants proposée aux salariés pour l'écran "Demande") ──
+async function loadFournisseurs() {
+  var body = document.getElementById("fournisseursBody");
+  var addSelect = document.getElementById("fournisseurAddSelect");
+  if (!body || !currentCompany) return;
+  body.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--muted);padding:24px">⏳ Chargement...</td></tr>';
+  try {
+    var [{ data: fournisseurs, error: errF }, { data: toutesAgences, error: errA }] = await Promise.all([
+      supabase.from('entreprise_fournisseurs').select('id, agence, en_compte').eq('company_id', currentCompany.id).order('agence'),
+      supabase.rpc('list_negociant_agences')
+    ]);
+    if (errF) throw errF;
+    if (errA) throw errA;
+
+    var list = Array.isArray(fournisseurs) ? fournisseurs : [];
+    if (list.length === 0) {
+      body.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--muted);padding:24px">Aucun fournisseur configuré — vos salariés ne pourront choisir aucun négociant dans l\'écran "Demande"</td></tr>';
+    } else {
+      body.innerHTML = list.map(function(f) {
+        return '<tr>'+
+          '<td>'+esc(f.agence)+'</td>'+
+          '<td><label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" '+(f.en_compte?'checked':'')+' onchange="toggleEnCompte('+f.id+', this.checked)"> En compte</label></td>'+
+          '<td><button class="btn-tbl danger" onclick="removeFournisseur('+f.id+')">🗑️ Retirer</button></td>'+
+        '</tr>';
+      }).join("");
+    }
+
+    var toutes = Array.isArray(toutesAgences) ? toutesAgences.map(function(r){return r.agence;}) : [];
+    var dejaAjoutees = list.map(function(f){return f.agence;});
+    var disponibles = toutes.filter(function(a){return dejaAjoutees.indexOf(a) === -1;});
+    addSelect.innerHTML = '<option value="">Choisir un négociant à ajouter...</option>' +
+      disponibles.map(function(a){return '<option value="'+esc(a)+'">'+esc(a)+'</option>';}).join("");
+  } catch(e) {
+    console.error("loadFournisseurs error", e);
+    body.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--red);padding:24px">⚠️ Erreur de chargement</td></tr>';
+  }
+}
+
+async function addFournisseur() {
+  var agence = document.getElementById("fournisseurAddSelect").value;
+  var enCompte = document.getElementById("fournisseurAddEnCompte").checked;
+  if (!agence || !currentCompany) { alert("Choisissez un négociant"); return; }
+  try {
+    var { error } = await supabase.from('entreprise_fournisseurs').insert({ company_id: currentCompany.id, agence: agence, en_compte: enCompte });
+    if (error) { alert("❌ Échec de l'ajout :\n" + frError(error)); return; }
+  } catch(e) { console.error("addFournisseur error", e); alert("❌ Erreur :\n" + frError(e)); return; }
+  loadFournisseurs();
+}
+
+async function toggleEnCompte(id, checked) {
+  try {
+    var { error } = await supabase.from('entreprise_fournisseurs').update({ en_compte: checked }).eq('id', id);
+    if (error) { alert("❌ Échec de la mise à jour :\n" + frError(error)); loadFournisseurs(); return; }
+  } catch(e) { console.error("toggleEnCompte error", e); alert("❌ Erreur :\n" + frError(e)); loadFournisseurs(); }
+}
+
+async function removeFournisseur(id) {
+  if (!confirm("Retirer ce fournisseur de votre liste ?")) return;
+  try {
+    var { error } = await supabase.from('entreprise_fournisseurs').delete().eq('id', id);
+    if (error) { alert("❌ Échec de la suppression :\n" + frError(error)); return; }
+  } catch(e) { console.error("removeFournisseur error", e); alert("❌ Erreur :\n" + frError(e)); return; }
+  loadFournisseurs();
 }
 
 // ── TEMPS RÉEL ──

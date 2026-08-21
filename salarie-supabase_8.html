@@ -2590,6 +2590,7 @@ function esc(v) {
 }
 
 var currentCode = null;
+var confirmChannel = null;
 var currentPin = null; // gardé en mémoire (jamais persisté) pour revalider chaque
                         // appel sensible côté serveur — voir loadBL/sendDemande/loadMesDemandes.
 var pendingUser = null;
@@ -2696,11 +2697,16 @@ function populateDemandeChantiers() {
 async function populateDemandeAgences() {
   var sel = document.getElementById("dmdAgence");
   try {
-    var { data, error } = await supabase.rpc('list_negociant_agences');
+    // Liste restreinte aux fournisseurs choisis par l'entreprise (voir
+    // "Fournisseurs habituels" dans l'espace admin) — pas tous les
+    // négociants du système. Ça ne concerne QUE cet écran de demande ;
+    // la vérification en magasin reste possible chez n'importe quel
+    // négociant partenaire, quel que soit ce qui est configuré ici.
+    var { data, error } = await supabase.rpc('list_fournisseurs_for_salarie', { p_code: currentCode });
     if (error) throw error;
     var agences = Array.isArray(data) ? data.map(function(r){ return r.agence; }) : [];
     if (agences.length === 0) {
-      sel.innerHTML = '<option value="">Aucune agence disponible</option>';
+      sel.innerHTML = '<option value="">Aucun fournisseur configuré — contactez votre administrateur</option>';
       return;
     }
     sel.innerHTML = agences.map(function(a){
@@ -3050,6 +3056,46 @@ function showCarte(user) {
   document.getElementById("tabBar").classList.remove("hidden");
   document.getElementById("sCarte").classList.remove("hidden");
   document.getElementById("sBL").classList.add("hidden");
+
+  subscribeConfirmChannel(code);
+}
+
+// Reçoit en temps réel le code de confirmation généré côté serveur au
+// moment où un négociant scanne CE salarié (voir log_passage, migration
+// 72) — permet de comparer à l'œil le code affiché ici avec celui vu par
+// le négociant, comme signal de confiance supplémentaire. Diffusion
+// publique (pas de session Auth réelle côté salarié), canal propre à ce
+// code salarié.
+function subscribeConfirmChannel(code) {
+  unsubscribeConfirmChannel();
+  try {
+    confirmChannel = supabase.channel("passage-confirm-" + code);
+    confirmChannel.on("broadcast", { event: "confirm" }, function(msg) {
+      if (msg && msg.payload && msg.payload.code) showConfirmCodeBanner(msg.payload.code);
+    });
+    confirmChannel.subscribe();
+  } catch(e) { console.error("subscribeConfirmChannel error", e); }
+}
+
+function unsubscribeConfirmChannel() {
+  if (confirmChannel) {
+    try { supabase.removeChannel(confirmChannel); } catch(e) { console.error("unsubscribeConfirmChannel error", e); }
+    confirmChannel = null;
+  }
+}
+
+function showConfirmCodeBanner(code) {
+  var el = document.getElementById("confirmBanner");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "confirmBanner";
+    el.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:9999;background:#FF6A1A;color:#fff;text-align:center;padding:14px;font-weight:700;font-size:18px;box-shadow:0 2px 8px rgba(0,0,0,.2)";
+    document.body.appendChild(el);
+  }
+  el.textContent = "🔑 Code de confirmation : " + esc(String(code));
+  el.style.display = "block";
+  clearTimeout(el._hideTimer);
+  el._hideTimer = setTimeout(function(){ el.style.display = "none"; }, 8000);
 }
 
 function out() {
@@ -3057,6 +3103,7 @@ function out() {
   currentPin = null;
   pendingUser = null;
   currentUser = null;
+  unsubscribeConfirmChannel();
   document.getElementById("codeIn").value = "";
   document.getElementById("loginPwd").value = "";
   document.getElementById("loginFaceIdHint").classList.add("hidden");
