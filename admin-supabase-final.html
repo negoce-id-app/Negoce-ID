@@ -4253,6 +4253,7 @@ async function saveSalarie() {
         console.error("saveSalarie insert failed", error2);
         var friendly2 = error2.message.includes("duplicate key") && error2.message.includes("email") ? "❌ Cet email est déjà utilisé par un autre salarié."
           : error2.message.includes("duplicate key") && error2.message.includes("telephone") ? "❌ Ce téléphone est déjà utilisé par un autre salarié."
+          : error2.message.includes("duplicate key") && error2.message.includes("code") ? "❌ Ce code est déjà utilisé par un autre salarié (même dans une autre entreprise) — choisissez-en un différent."
           : "❌ Échec de l'ajout :\n" + frError(error2);
         alert(friendly2);
         return;
