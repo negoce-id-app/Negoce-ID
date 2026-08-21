@@ -100,6 +100,9 @@ body{font-family:'Inter',sans-serif;background:var(--bg);display:flex;flex-direc
 .bl-input{flex:1;padding:13px;border:2px solid rgba(255,255,255,0.15);border-radius:12px;font-size:16px;font-weight:700;letter-spacing:2px;text-transform:uppercase;font-family:monospace;color:#fff;background:rgba(255,255,255,0.08);-webkit-appearance:none}
 .bl-input::placeholder{color:rgba(255,255,255,0.25);letter-spacing:0;font-weight:400}
 .bl-input:focus{outline:none;border-color:var(--orange)}
+.manual-code-input{flex:1;padding:13px;border:2px solid var(--border);border-radius:12px;font-size:16px;font-weight:700;letter-spacing:2px;text-transform:uppercase;font-family:monospace;color:var(--navy);background:#fff;-webkit-appearance:none}
+.manual-code-input::placeholder{color:var(--muted);letter-spacing:0;font-weight:400}
+.manual-code-input:focus{outline:none;border-color:var(--orange)}
 .bl-btn{padding:13px 16px;background:var(--orange);color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:800;cursor:pointer}
 .bl-saved{display:none;align-items:center;gap:8px;background:rgba(12,175,96,0.15);border:1px solid rgba(12,175,96,0.3);border-radius:10px;padding:10px 14px;margin-top:10px}
 .bl-saved-txt{font-size:13px;color:#34D399;font-weight:600}
@@ -353,7 +356,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);display:flex;flex-direc
       <div class="box-lbl">⌨️ Pas de douchette ni de caméra ?</div>
       <div style="font-size:12px;color:var(--muted);margin:6px 0 10px">Tapez le code du salarié à la main, puis comparez le code de confirmation affiché avec celui sur son téléphone.</div>
       <div style="display:flex;gap:8px">
-        <input class="bl-input" id="manualCodeInput" type="text" placeholder="Code salarié (ex: MAG-123456)" autocomplete="off" autocorrect="off" spellcheck="false" style="flex:1;text-transform:uppercase" onkeydown="if(event.key==='Enter')submitManualCode()">
+        <input class="manual-code-input" id="manualCodeInput" type="text" placeholder="Code salarié (ex: MAG-123456)" autocomplete="off" autocorrect="off" spellcheck="false" onkeydown="if(event.key==='Enter')submitManualCode()">
         <button class="btn-cam" style="width:auto;padding:0 18px" onclick="submitManualCode()">Vérifier</button>
       </div>
     </div>
