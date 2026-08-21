@@ -137,28 +137,29 @@ async function checkSiretLive(siret) {
   var currentRaw = document.getElementById("fSiret").value.replace(/\s+/g, "");
   if (currentRaw !== siret) return;
   try {
-    var res = await fetch("https://recherche-entreprises.api.gouv.fr/search?q=" + siret);
+    // Passe par notre propre fonction relais (check-siret) plutôt que
+    // d'appeler directement l'API gouv.fr depuis le navigateur : cette
+    // dernière ne renvoie pas d'en-tête CORS exploitable par un site tiers,
+    // l'appel direct échoue donc systématiquement une fois déployé en ligne.
+    var res = await fetch(SUPABASE_URL + "/functions/v1/check-siret?siret=" + siret, {
+      headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY }
+    });
     if (!res.ok) { showManualFallback("❓ Vérification indisponible pour le moment — merci de compléter les champs ci-dessous."); return; }
     var data = await res.json();
-    var match = data && data.results && data.results[0];
-    if (!match) {
-      showManualFallback("❓ Établissement non trouvé automatiquement — merci de compléter les champs ci-dessous.");
-      return;
-    }
-    if (match.etat_administratif && match.etat_administratif !== "A") {
+    if (data.blocked) {
       statusEl.style.background = "#FEE";
       statusEl.style.color = "#C62828";
-      statusEl.textContent = "⚠️ Cet établissement apparaît comme fermé dans le registre officiel. Vérifiez le numéro SIRET.";
+      statusEl.textContent = "⚠️ " + data.blocked;
       document.getElementById("manualNomGroup").style.display = "none";
       document.getElementById("manualDeptGroup").style.display = "none";
       return;
     }
-    var nom = match.nom_complet || match.nom_raison_sociale || null;
-    var dept = (match.siege && match.siege.departement) || null;
+    var nom = data.nom || null;
+    var dept = data.departement || null;
     detected.nom = nom;
     detected.departement = dept;
     if (!nom) {
-      showManualFallback("✅ Établissement trouvé, mais son nom n'a pas pu être récupéré — merci de le compléter ci-dessous.");
+      showManualFallback("❓ Établissement non trouvé automatiquement — merci de compléter les champs ci-dessous.");
       return;
     }
     var deptEntry = dept ? DEPARTEMENTS.find(function(d){ return d.code === dept; }) : null;
