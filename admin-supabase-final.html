@@ -2644,7 +2644,7 @@ tr:hover td{background:#FAFBFF}
         <select class="filter-select" id="companyDeptFilter" style="max-width:220px" onchange="renderCompaniesSection()"></select>
       </div>
       <table>
-        <thead><tr><th>Entreprise</th><th>Email</th><th>Préfixe</th><th>Département</th><th>Formule</th><th>Statut</th><th>Action</th></tr></thead>
+        <thead><tr><th>Entreprise</th><th>Email</th><th>Préfixe</th><th>SIRET</th><th>Département</th><th>Formule</th><th>Statut</th><th>Action</th></tr></thead>
         <tbody id="pendingBody"></tbody>
       </table>
     </div>
@@ -3316,7 +3316,7 @@ function renderCompaniesSection() {
       || (qSiret && (c.siret||"").replace(/\s+/g, "").indexOf(qSiret) !== -1);
   });
   if (filtered.length === 0) {
-    body.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">Aucune entreprise trouvée</td></tr>';
+    body.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px">Aucune entreprise trouvée</td></tr>';
     return;
   }
   var PLAN_LABELS = { solo: "Indépendant", petite: "Petite entreprise", entreprise: "Entreprise", grande: "Grande entreprise" };
@@ -3346,10 +3346,14 @@ function renderCompaniesSection() {
       return '<option value="'+p+'"'+sel+'>'+esc(PLAN_LABELS[p])+'</option>';
     }).join("");
     var planSelect = '<select class="filter-select" style="font-size:12px;padding:6px 8px" onchange="updateCompanyPlan(\''+escJsAttr(c.id)+'\', this.value)">'+planOptions+'</select>';
+    var siretInput = '<input type="text" class="filter-select" style="font-size:12px;padding:6px 8px;width:130px" value="'+esc(c.siret||"")+'" maxlength="14" placeholder="14 chiffres" '
+      + 'onkeydown="if(event.key===\'Enter\'){this.blur();}" '
+      + 'onblur="updateCompanySiret(\''+escJsAttr(c.id)+'\', this.value, this)">';
     return '<tr>'+
       '<td>'+esc(c.nom)+'</td>'+
       '<td>'+esc(c.email_admin||"—")+'</td>'+
       '<td>'+esc(c.prefix||"—")+'</td>'+
+      '<td>'+siretInput+'</td>'+
       '<td>'+deptSelect+'</td>'+
       '<td>'+planSelect+'</td>'+
       '<td><span class="pill '+pillClass+'">'+statutLabel+'</span></td>'+
@@ -3366,6 +3370,31 @@ async function updateCompanyPlan(companyId, plan) {
     if (c) c.plan = plan || null;
   } catch(e) {
     alert("❌ Échec de la mise à jour de la formule :\n" + frError(e));
+  }
+}
+
+// SIRET modifiable directement dans le tableau (ex: correction d'une
+// erreur de saisie à la création). Contrôle le format (14 chiffres) avant
+// d'envoyer, et restaure l'ancienne valeur dans le champ si la mise à jour
+// échoue (ex: SIRET déjà utilisé par une autre entreprise — contrainte
+// d'unicité en base).
+async function updateCompanySiret(companyId, siret, inputEl) {
+  var c = COMPANIES.find(function(x){ return x.id === companyId; });
+  var cleaned = String(siret || "").replace(/\s+/g, "");
+  if (cleaned === (c ? (c.siret || "") : "")) return; // rien n'a changé
+  if (cleaned && !/^[0-9]{14}$/.test(cleaned)) {
+    alert("❌ Le SIRET doit contenir exactement 14 chiffres.");
+    if (inputEl && c) inputEl.value = c.siret || "";
+    return;
+  }
+  try {
+    var { error } = await supabase.from('entreprises').update({ siret: cleaned || null }).eq('id', companyId);
+    if (error) throw error;
+    if (c) c.siret = cleaned || null;
+    if (inputEl) inputEl.value = cleaned;
+  } catch(e) {
+    alert("❌ Échec de la mise à jour du SIRET :\n" + frError(e));
+    if (inputEl && c) inputEl.value = c.siret || "";
   }
 }
 
