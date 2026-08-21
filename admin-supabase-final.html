@@ -2845,6 +2845,27 @@ tr:hover td{background:#FAFBFF}
   </div>
 </div>
 
+<!-- MODAL OFFRIR UN ABONNEMENT (activation gratuite, sans Stripe) -->
+<div class="modal-bg" id="modalOfferFree">
+  <div class="modal">
+    <div class="modal-title">🎁 Offrir l'abonnement</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:14px" id="offerFreeText"></div>
+    <div class="form-group">
+      <label class="form-lbl">Formule à offrir</label>
+      <select class="form-in" id="offerFreePlan">
+        <option value="solo">Indépendant (1 utilisateur)</option>
+        <option value="petite">Petite entreprise (≤10 salariés)</option>
+        <option value="entreprise">Entreprise (≤50 salariés)</option>
+        <option value="grande" selected>Grande entreprise (illimité)</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('modalOfferFree')">Annuler</button>
+      <button class="btn-save" onclick="confirmOfferFree()">🎁 Activer gratuitement</button>
+    </div>
+  </div>
+</div>
+
 <script>
 var SUPABASE_URL = "https://rzveghiwbjafmfhrfscb.supabase.co";
 var SUPABASE_KEY = "sb_publishable_Hb6ILSc7bzW_sC6ZD2X7Nw_QP5homkU";
@@ -3301,9 +3322,11 @@ function renderCompaniesSection() {
       : statut === "impaye" ? "IMPAYÉ" : statut === "resilie" ? "RÉSILIÉ" : "DÉSACTIVÉ";
     var actionBtn;
     if (statut === "en_attente") {
-      actionBtn = '<button class="btn-action btn-gold" onclick="openPaymentModal(\''+escJsAttr(c.id)+'\')">💳 Générer un lien de paiement</button>';
+      actionBtn = '<button class="btn-action btn-gold" onclick="openPaymentModal(\''+escJsAttr(c.id)+'\')">💳 Générer un lien de paiement</button> '
+        + '<button class="btn-tbl" onclick="openOfferFreeModal(\''+escJsAttr(c.id)+'\',\''+escJsAttr(c.nom)+'\')" title="Activer sans paiement (partenaire, démo, geste commercial)">🎁 Offrir</button>';
     } else if (statut === "impaye" || statut === "resilie") {
       actionBtn = '<button class="btn-action btn-gold" onclick="openPaymentModal(\''+escJsAttr(c.id)+'\')">🔗 Renvoyer un lien</button> '
+        + '<button class="btn-tbl" onclick="openOfferFreeModal(\''+escJsAttr(c.id)+'\',\''+escJsAttr(c.nom)+'\')" title="Activer sans paiement">🎁 Offrir</button> '
         + '<button class="btn-tbl danger" onclick="setCompanyStatut(\''+escJsAttr(c.id)+'\',\'inactif\')">⛔ Désactiver</button>';
     } else if (statut === "actif") {
       actionBtn = '<button class="btn-tbl danger" onclick="setCompanyStatut(\''+escJsAttr(c.id)+'\',\'inactif\')">⛔ Désactiver</button>';
@@ -3334,6 +3357,37 @@ async function updateCompanyDept(companyId, departement) {
   } catch(e) {
     alert("❌ Échec de la mise à jour du département :\n" + frError(e));
   }
+}
+
+// ── OFFRIR UN ABONNEMENT (activation gratuite, sans Stripe) ──
+// Utile pour un partenaire, une démo, ou tout autre geste commercial :
+// active directement l'entreprise sans passer par un paiement Stripe.
+// La formule choisie ici détermine quand même le plafond de salariés
+// (voir check_plan_limit_salaries), donc à choisir avec soin.
+var offerFreeCompanyId = null;
+
+function openOfferFreeModal(id, nom) {
+  offerFreeCompanyId = id;
+  document.getElementById("offerFreeText").textContent = "Active l'accès de \"" + nom + "\" immédiatement, sans paiement. Choisis la formule qui déterminera le nombre de salariés autorisés.";
+  document.getElementById("offerFreePlan").value = "grande";
+  document.getElementById("modalOfferFree").classList.add("open");
+}
+
+async function confirmOfferFree() {
+  if (!offerFreeCompanyId) return;
+  var plan = document.getElementById("offerFreePlan").value;
+  try {
+    var { error } = await supabase.from('entreprises').update({ statut: 'actif', plan: plan }).eq('id', offerFreeCompanyId);
+    if (error) throw error;
+  } catch(e) {
+    alert("❌ Échec de l'activation :\n" + frError(e));
+    return;
+  }
+  closeModal('modalOfferFree');
+  await loadCompanies();
+  renderCompanyBar();
+  renderCompaniesSection();
+  alert("✅ Entreprise activée gratuitement.");
 }
 
 // ── PAIEMENT STRIPE ──
