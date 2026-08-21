@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NégoceID — Conditions générales de vente</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#F2F4F8;color:#22283A;line-height:1.6}
+.wrap{max-width:760px;margin:0 auto;padding:40px 24px 80px}
+.hdr{font-size:14px;font-weight:800;color:#0F1F3D;margin-bottom:6px}
+.hdr em{color:#D4A843;font-style:normal}
+h1{font-size:26px;color:#0F1F3D;margin:24px 0 4px}
+.maj{font-size:13px;color:#7A8194;margin-bottom:20px}
+h2{font-size:16px;color:#0F1F3D;margin:28px 0 8px}
+p,li{font-size:14px;color:#3A4256}
+ul{margin:8px 0 8px 20px}
+a{color:#0F1F3D}
+.card{background:#fff;border-radius:14px;padding:28px 32px;box-shadow:0 2px 20px rgba(15,31,61,0.08)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hdr">Négoce<em>ID</em></div>
+  <div class="card">
+    <h1>Conditions générales de vente</h1>
+    <div class="maj">Dernière mise à jour : 20/08/2026</div>
+
+    <h2>1. Objet et champ d'application</h2>
+    <p>
+      Les présentes conditions générales de vente (CGV) régissent la vente de l'abonnement
+      à l'application NégoceID par Négoce-ID, SASU au capital de 1 000 €, SIRET 108 769 209,
+      dont le siège social est situé 18 Rue Comteau, 33640 Castres-Gironde (« le Vendeur »),
+      à toute entreprise du BTP souscrivant au service (« le Client »). Elles s'appliquent à
+      l'exclusion de toutes autres conditions, notamment celles du Client, sauf accord écrit
+      contraire. Les présentes CGV sont conclues entre professionnels ; le Client reconnaît
+      souscrire à des fins professionnelles, à l'exclusion de tout usage personnel.
+    </p>
+
+    <h2>2. Description du service</h2>
+    <p>
+      NégoceID permet à une entreprise du BTP de vérifier l'identité et l'autorisation de ses
+      salariés lors du retrait de matériaux auprès de négociants partenaires, via une carte
+      numérique et un QR code, avec traçabilité des passages. Le fonctionnement détaillé du
+      service est décrit dans les
+      <a href="cgu.html">conditions générales d'utilisation</a>.
+    </p>
+
+    <h2>3. Commande et souscription</h2>
+    <p>
+      La souscription s'effectue par la création d'un compte entreprise sur negoce-id.fr, puis
+      le choix d'une formule et le paiement en ligne via Stripe. La confirmation du paiement
+      emporte formation du contrat entre les parties et active l'accès au service. Le Client
+      garantit l'exactitude des informations fournies lors de la souscription.
+    </p>
+
+    <h2>4. Prix et formules</h2>
+    <p>
+      NégoceID propose quatre formules, selon la taille de l'entreprise cliente : Indépendant
+      (9 € HT/mois, 1 utilisateur), Petite entreprise (39 € HT/mois, jusqu'à 10 salariés),
+      Entreprise (79 € HT/mois, jusqu'à 50 salariés) et Grande entreprise (au-delà de 50
+      salariés, tarif établi sur devis, souscription hors plateforme de paiement automatisée).
+      Le nombre de comptes salariés actifs est limité au plafond de la formule souscrite ; le
+      Client doit souscrire à une formule supérieure pour dépasser ce plafond. Les tarifs en
+      vigueur sont indiqués sur le site au moment de la souscription et exprimés en euros. Le
+      Vendeur se réserve le droit de modifier ses tarifs à tout moment ; toute modification de
+      prix ne s'applique qu'aux nouvelles souscriptions ou au renouvellement suivant l'échéance
+      en cours pour les abonnements déjà souscrits, sous réserve d'une information préalable
+      du Client.
+    </p>
+
+    <h2>5. Modalités de paiement</h2>
+    <p>
+      Pour les formules Indépendant, Petite entreprise et Entreprise, le paiement s'effectue
+      par carte bancaire, via la plateforme de paiement sécurisée Stripe, selon une périodicité
+      mensuelle. L'abonnement est reconductible tacitement à chaque échéance, sauf résiliation
+      dans les conditions de l'article 6. À défaut de paiement à l'échéance, le Vendeur peut
+      suspendre l'accès au service. La formule Grande entreprise fait l'objet d'un devis et de
+      modalités de facturation convenues séparément avec le Client.
+    </p>
+
+    <h2>6. Durée et résiliation</h2>
+    <p>
+      L'abonnement est mensuel et se renouvelle tacitement à chaque échéance. Le Client peut résilier à tout moment depuis
+      son espace ou en contactant contact@negoce-id.fr ; la résiliation prend effet à la fin
+      de la période en cours et n'ouvre droit à aucun remboursement au prorata, sauf
+      disposition légale contraire.
+    </p>
+
+    <h2>7. Absence de droit de rétractation</h2>
+    <p>
+      Conformément à l'article L221-3 du Code de la consommation, le droit de rétractation ne
+      s'applique pas aux contrats conclus entre professionnels dans le cadre de leur activité
+      principale, tel qu'ici le cas.
+    </p>
+
+    <h2>8. Responsabilité</h2>
+    <p>
+      Le Vendeur met en œuvre les moyens raisonnables pour assurer la disponibilité et la
+      sécurité du service, sans garantie de continuité absolue. Sa responsabilité ne saurait
+      être engagée en cas d'interruption de service, d'erreur de saisie par le Client ou ses
+      salariés, ou de décision commerciale prise par un négociant partenaire sur la base des
+      informations affichées par l'application. La responsabilité du Vendeur, si elle est
+      retenue, est limitée au montant des sommes versées par le Client au titre des douze
+      derniers mois.
+    </p>
+
+    <h2>9. Réclamations et service client</h2>
+    <p>
+      Toute réclamation relative à la commande ou au service peut être adressée à
+      contact@negoce-id.fr. Le Vendeur s'engage à y répondre dans un délai raisonnable.
+    </p>
+
+    <h2>10. Données personnelles</h2>
+    <p>
+      Le traitement des données personnelles dans le cadre de l'exécution du contrat est
+      décrit dans la
+      <a href="politique-confidentialite.html">politique de confidentialité</a>.
+    </p>
+
+    <h2>11. Droit applicable et litiges</h2>
+    <p>
+      Les présentes CGV sont soumises au droit français. En cas de litige, les parties
+      s'efforceront de trouver une solution amiable avant toute action judiciaire. À défaut,
+      le litige relève de la compétence exclusive des tribunaux de Bordeaux, sauf disposition
+      légale impérative contraire.
+    </p>
+  </div>
+</div>
+</body>
+</html>
