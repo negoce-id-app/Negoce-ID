@@ -2617,6 +2617,7 @@ tr:hover td{background:#FAFBFF}
         Ces négociants seront proposés à vos salariés dans l'écran "Demande" de leur carte, pour envoyer une demande à l'avance. Ça ne limite pas où ils peuvent retirer leurs marchandises — la vérification en magasin reste possible chez n'importe quel négociant partenaire.
       </div>
       <div class="filter-row">
+        <input class="filter-select" id="fournisseurSearchInput" type="text" placeholder="🔎 Rechercher un négociant..." oninput="filterFournisseurOptions()" style="max-width:240px">
         <select class="filter-select" id="fournisseurAddSelect" style="flex:1;min-width:220px">
           <option value="">Choisir un négociant à ajouter...</option>
         </select>
@@ -3541,10 +3542,17 @@ function selectCompany(company) {
 }
 
 // ── FOURNISSEURS (liste de négociants proposée aux salariés pour l'écran "Demande") ──
+// Liste complète des négociants pas encore ajoutés, mise à jour à chaque
+// chargement — sert de base à la recherche instantanée (voir
+// filterFournisseurOptions), pour rester utilisable même avec des
+// centaines de négociants dans le menu.
+var fournisseursDisponibles = [];
+
 async function loadFournisseurs() {
   var body = document.getElementById("fournisseursBody");
-  var addSelect = document.getElementById("fournisseurAddSelect");
+  var searchInput = document.getElementById("fournisseurSearchInput");
   if (!body || !currentCompany) return;
+  if (searchInput) searchInput.value = "";
   body.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--muted);padding:24px">⏳ Chargement...</td></tr>';
   try {
     var [{ data: fournisseurs, error: errF }, { data: toutesAgences, error: errA }] = await Promise.all([
@@ -3569,13 +3577,25 @@ async function loadFournisseurs() {
 
     var toutes = Array.isArray(toutesAgences) ? toutesAgences.map(function(r){return r.agence;}) : [];
     var dejaAjoutees = list.map(function(f){return f.agence;});
-    var disponibles = toutes.filter(function(a){return dejaAjoutees.indexOf(a) === -1;});
-    addSelect.innerHTML = '<option value="">Choisir un négociant à ajouter...</option>' +
-      disponibles.map(function(a){return '<option value="'+esc(a)+'">'+esc(a)+'</option>';}).join("");
+    fournisseursDisponibles = toutes.filter(function(a){return dejaAjoutees.indexOf(a) === -1;});
+    filterFournisseurOptions();
   } catch(e) {
     console.error("loadFournisseurs error", e);
     body.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--red);padding:24px">⚠️ Erreur de chargement</td></tr>';
   }
+}
+
+// Reconstruit les options du menu déroulant à partir de la recherche —
+// évite de devoir faire défiler une longue liste une fois qu'il y a
+// beaucoup de négociants dans le système.
+function filterFournisseurOptions() {
+  var addSelect = document.getElementById("fournisseurAddSelect");
+  var searchInput = document.getElementById("fournisseurSearchInput");
+  if (!addSelect) return;
+  var q = searchInput ? searchInput.value.trim().toLowerCase() : "";
+  var filtered = q ? fournisseursDisponibles.filter(function(a){ return a.toLowerCase().indexOf(q) !== -1; }) : fournisseursDisponibles;
+  addSelect.innerHTML = '<option value="">Choisir un négociant à ajouter...</option>' +
+    filtered.map(function(a){return '<option value="'+esc(a)+'">'+esc(a)+'</option>';}).join("");
 }
 
 async function addFournisseur() {
