@@ -2334,7 +2334,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);min-height:100vh}
 .btn-logout-hdr{background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.7);border:none;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer}
 
 /* LOGIN ADMIN */
-#screenLogin,#screenForgot,#screenNewPwd,#screenPending{display:flex;align-items:center;justify-content:center;min-height:calc(100vh - 56px);padding:24px}
+#screenLogin,#screenForgot,#screenNewPwd,#screenPending,#screenChoosePlan{display:flex;align-items:center;justify-content:center;min-height:calc(100vh - 56px);padding:24px}
 .login-link{font-size:13px;color:var(--muted);cursor:pointer;text-decoration:underline}
 .login-ok{background:#EDFBF3;color:#0CAF60;border-radius:8px;padding:10px;font-size:13px;margin-top:10px;display:none}
 .login-card{background:var(--white);border-radius:20px;padding:32px;width:100%;max-width:360px;box-shadow:var(--shadow);text-align:center}
@@ -2523,6 +2523,27 @@ tr:hover td{background:#FAFBFF}
     <div class="login-h" id="pendingTitle">Compte en attente</div>
     <div class="login-p" id="pendingText">Votre demande d'inscription a bien été reçue. Votre compte sera activé sous 24h ouvrées — vous recevrez un message de confirmation.</div>
     <button class="btn-login" onclick="logout()">← Retour à la connexion</button>
+  </div>
+</div>
+
+<!-- CHOIX DE FORMULE ET PAIEMENT (self-service entreprise) -->
+<div id="screenChoosePlan" style="display:none">
+  <div class="login-card">
+    <div class="login-icon" id="choosePlanIcon">💳</div>
+    <div class="login-h" id="choosePlanTitle">Activez votre abonnement</div>
+    <div class="login-p" id="choosePlanText">Choisissez votre formule pour donner accès à NégoceID à vos salariés.</div>
+    <div class="field" style="text-align:left;margin-top:16px">
+      <label class="field-lbl">Formule</label>
+      <select class="field-in" id="choosePlanSelect">
+        <option value="solo">Indépendant — 9 € HT/mois (1 utilisateur)</option>
+        <option value="petite" selected>Petite entreprise — 39 € HT/mois (≤10 salariés)</option>
+        <option value="entreprise">Entreprise — 79 € HT/mois (≤50 salariés)</option>
+      </select>
+      <div class="form-hint" style="margin-top:6px">Plus de 50 salariés ? Contactez-nous à contact@negoce-id.fr pour une offre sur devis.</div>
+    </div>
+    <button class="btn-login" id="choosePlanBtn" onclick="selfGeneratePaymentLink()" style="margin-top:10px">Payer et activer →</button>
+    <div class="login-err" id="choosePlanErr" style="display:none"></div>
+    <button class="btn-login" onclick="logout()" style="margin-top:10px;background:transparent;color:var(--muted);box-shadow:none">← Retour à la connexion</button>
   </div>
 </div>
 
@@ -2933,18 +2954,37 @@ async function continueLoginAfterAuth() {
       await supabase.auth.signOut();
       return;
     }
-    if (myComp.statut === "en_attente" || myComp.statut === "inactif") {
+    if (myComp.statut === "inactif") {
       document.getElementById("screenLogin").style.display = "none";
-      if (myComp.statut === "inactif") {
-        document.getElementById("pendingIcon").textContent = "⛔";
-        document.getElementById("pendingTitle").textContent = "Compte désactivé";
-        document.getElementById("pendingText").textContent = "L'accès de votre entreprise a été désactivé. Contactez votre interlocuteur NégoceID pour en savoir plus.";
-      } else {
-        document.getElementById("pendingIcon").textContent = "🕐";
-        document.getElementById("pendingTitle").textContent = "Compte en attente";
-        document.getElementById("pendingText").textContent = "Votre demande d'inscription a bien été reçue. Votre compte sera activé sous 24h ouvrées — vous recevrez un message de confirmation.";
-      }
+      document.getElementById("pendingIcon").textContent = "⛔";
+      document.getElementById("pendingTitle").textContent = "Compte désactivé";
+      document.getElementById("pendingText").textContent = "L'accès de votre entreprise a été désactivé. Contactez votre interlocuteur NégoceID pour en savoir plus.";
       document.getElementById("screenPending").style.display = "flex";
+      return;
+    }
+    // en_attente (jamais payé), impaye (échec de renouvellement) ou
+    // resilie (abonnement annulé) : l'entreprise peut activer /
+    // réactiver elle-même son accès en choisissant une formule et en
+    // payant directement — pas besoin d'attendre une action du super
+    // admin.
+    if (myComp.statut === "en_attente" || myComp.statut === "impaye" || myComp.statut === "resilie") {
+      document.getElementById("screenLogin").style.display = "none";
+      if (myComp.statut === "impaye") {
+        document.getElementById("choosePlanIcon").textContent = "⚠️";
+        document.getElementById("choosePlanTitle").textContent = "Paiement en échec";
+        document.getElementById("choosePlanText").textContent = "Le dernier prélèvement de votre abonnement a échoué. Mettez à jour votre formule pour réactiver l'accès de vos salariés.";
+      } else if (myComp.statut === "resilie") {
+        document.getElementById("choosePlanIcon").textContent = "🔄";
+        document.getElementById("choosePlanTitle").textContent = "Abonnement résilié";
+        document.getElementById("choosePlanText").textContent = "Votre abonnement a été résilié. Choisissez une formule pour réactiver l'accès de vos salariés.";
+      } else {
+        document.getElementById("choosePlanIcon").textContent = "💳";
+        document.getElementById("choosePlanTitle").textContent = "Activez votre abonnement";
+        document.getElementById("choosePlanText").textContent = "Choisissez votre formule pour donner accès à NégoceID à vos salariés.";
+      }
+      if (myComp.plan) document.getElementById("choosePlanSelect").value = myComp.plan;
+      document.getElementById("choosePlanErr").style.display = "none";
+      document.getElementById("screenChoosePlan").style.display = "flex";
       return;
     }
   }
@@ -2961,6 +3001,10 @@ async function continueLoginAfterAuth() {
     subscribeToEntreprises();
     subscribeToNegociants();
     requestNotificationPermission();
+    // Charge aussi les négociants dès la connexion (pas seulement à
+    // l'ouverture de l'onglet) pour que le badge "en attente" soit
+    // correct immédiatement.
+    loadNegociants();
   } else {
     // À ce stade, myComp (ci-dessus) a déjà garanti que l'entreprise existe
     // bel et bien : pas de fallback sur COMPANIES[0] ici, ce serait montrer
@@ -2993,6 +3037,8 @@ async function loadNegociants() {
       body.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">Aucune agence négociant — cliquez sur "+ Nouvelle agence"</td></tr>';
       return;
     }
+    negociantsPendingCount = list.filter(function(n){ return n.statut === "en_attente"; }).length;
+    updateNegociantLoginBadge();
     var baseUrl = window.location.origin + window.location.pathname.replace(/admin-supabase-final\.html$/, "");
     body.innerHTML = list.map(function(n) {
       var link = baseUrl + "negociant_8.html?nego=" + encodeURIComponent(n.agence);
@@ -3000,16 +3046,27 @@ async function loadNegociants() {
       var logoCell = n.logo_url
         ? '<img src="'+esc(n.logo_url)+'" style="width:40px;height:40px;object-fit:contain;border-radius:6px;border:1px solid var(--border);background:#fff" alt="">'
         : '<div style="width:40px;height:40px;border-radius:6px;border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:16px">🏪</div>';
+      var statut = n.statut || "actif";
+      var statutPill = statut === "en_attente"
+        ? '<span class="pill pill-gold">EN ATTENTE</span>'
+        : statut === "refuse" ? '<span class="pill pill-red">REFUSÉ</span>' : '';
+      var validationBtns = statut === "en_attente"
+        ? '<button class="btn-action btn-gold" onclick="setNegociantStatut(\''+uid+'\',\'actif\',\''+escJsAttr(n.agence)+'\')">✅ Activer</button> '
+          + '<button class="btn-tbl danger" onclick="setNegociantStatut(\''+uid+'\',\'refuse\',\''+escJsAttr(n.agence)+'\')">✖️ Refuser</button> '
+        : statut === "refuse"
+        ? '<button class="btn-tbl" onclick="setNegociantStatut(\''+uid+'\',\'actif\',\''+escJsAttr(n.agence)+'\')">🟢 Réactiver</button> '
+        : '';
       return '<tr>'+
         '<td>'+
           logoCell+
           '<input type="file" accept="image/*" id="negLogoFile_'+esc(n.auth_user_id)+'" style="display:none" onchange="uploadNegociantLogo(\''+uid+'\', this)">'+
           '<button class="btn-tbl" style="margin-top:4px" onclick="document.getElementById(\'negLogoFile_'+esc(n.auth_user_id)+'\').click()">'+(n.logo_url?"✏️ Changer":"➕ Logo")+'</button>'+
         '</td>'+
-        '<td>'+esc(n.agence)+'</td>'+
+        '<td>'+esc(n.agence)+' '+statutPill+'</td>'+
         '<td>'+esc(n.email||"—")+'</td>'+
         '<td><code style="font-size:10px;word-break:break-all">'+esc(link)+'</code></td>'+
         '<td>'+
+          validationBtns+
           '<button class="btn-tbl" onclick="copyNegociantLink(\''+escJsAttr(link)+'\')">📋 Copier</button>'+
           (n.email ? '<button class="btn-tbl" onclick="resetNegociantPassword(\''+escJsAttr(n.email)+'\',\''+escJsAttr(n.agence)+'\')" title="Envoyer un lien de réinitialisation du mot de passe">🔑 Réinitialiser</button>' : '')+
           '<button class="btn-tbl danger" onclick="deleteNegociant(\''+uid+'\',\''+escJsAttr(n.agence)+'\')" title="Supprimer définitivement">🗑️</button>'+
@@ -3020,6 +3077,18 @@ async function loadNegociants() {
     console.error("loadNegociants error", e);
     body.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">⚠️ Erreur de chargement</td></tr>';
   }
+}
+
+async function setNegociantStatut(authUserId, statut, agence) {
+  var labels = { actif: "activer", refuse: "refuser" };
+  if (!confirm("Confirmer : " + (labels[statut]||statut) + " l'agence " + agence + " ?")) return;
+  try {
+    var { data, error } = await supabase.rpc('set_negociant_statut', { p_auth_user_id: authUserId, p_statut: statut });
+    if (error) { alert("❌ Échec :\n" + frError(error)); return; }
+    if (!data) { alert("❌ Action impossible pour ce compte."); return; }
+  } catch(e) { alert("❌ Erreur :\n" + frError(e)); return; }
+  await loadNegociants();
+  alert(statut === "actif" ? "✅ Agence activée" : "✖️ Agence refusée");
 }
 
 async function deleteNegociant(authUserId, agence) {
@@ -3223,6 +3292,37 @@ async function generatePaymentLink() {
   }
 }
 
+// Self-service : l'entreprise elle-même (company_admin) génère son
+// lien de paiement pour sa propre entreprise et est redirigée
+// directement vers Stripe Checkout, sans passer par le super admin.
+async function selfGeneratePaymentLink() {
+  var plan = document.getElementById("choosePlanSelect").value;
+  var btn = document.getElementById("choosePlanBtn");
+  var errEl = document.getElementById("choosePlanErr");
+  errEl.style.display = "none";
+  btn.disabled = true; btn.textContent = "Redirection vers le paiement...";
+  try {
+    var { data: { session } } = await supabase.auth.getSession();
+    var res = await fetch(SUPABASE_URL + "/functions/v1/create-checkout-session", {
+      method: "POST",
+      headers: { "Authorization": "Bearer " + session.access_token, "Content-Type": "application/json" },
+      body: JSON.stringify({ plan: plan })
+    });
+    var result = await res.json();
+    if (!res.ok) {
+      btn.disabled = false; btn.textContent = "Payer et activer →";
+      errEl.textContent = "❌ " + (result.error || "Une erreur est survenue");
+      errEl.style.display = "block";
+      return;
+    }
+    window.location.href = result.url;
+  } catch(e) {
+    btn.disabled = false; btn.textContent = "Payer et activer →";
+    errEl.textContent = "❌ Erreur de connexion : " + frError(e);
+    errEl.style.display = "block";
+  }
+}
+
 function copierLienPaiement() {
   var input = document.getElementById("paiementLien");
   input.select();
@@ -3293,6 +3393,8 @@ async function loadCompanies() {
 async function logout() {
   document.getElementById("screenLogin").style.display = "flex";
   document.getElementById("screenDash").style.display = "none";
+  document.getElementById("screenPending").style.display = "none";
+  document.getElementById("screenChoosePlan").style.display = "none";
   var emailEl = document.getElementById("loginEmail");
   var pwdEl = document.getElementById("loginPwd");
   if (emailEl) emailEl.value = "";
@@ -3528,6 +3630,7 @@ function updatePendingBadge() {
 // connexion, jamais un doublon.
 var negociantsChannel = null;
 var negociantLoginUnseen = 0;
+var negociantsPendingCount = 0;
 
 function subscribeToNegociants() {
   if (negociantsChannel) {
@@ -3563,9 +3666,10 @@ function notifyNegociantFirstLogin(agence) {
 
 function updateNegociantLoginBadge() {
   var badge = document.getElementById("dashTabNegociantsBadge");
+  var total = negociantLoginUnseen + negociantsPendingCount;
   if (badge) {
-    badge.textContent = negociantLoginUnseen;
-    badge.style.display = negociantLoginUnseen > 0 ? "inline-flex" : "none";
+    badge.textContent = total;
+    badge.style.display = total > 0 ? "inline-flex" : "none";
   }
   refreshDashTitle();
 }
@@ -3580,7 +3684,7 @@ function clearNegociantLoginBadge() {
 // l'autre.
 function refreshDashTitle() {
   var pending = COMPANIES.filter(function(c){ return (c.statut || "actif") === "en_attente"; }).length;
-  var total = pending + negociantLoginUnseen;
+  var total = pending + negociantLoginUnseen + negociantsPendingCount;
   document.title = total > 0 ? "(" + total + ") NégoceID — Admin" : "NégoceID — Admin";
 }
 
