@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NégoceID — Conditions générales d'utilisation</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#F2F4F8;color:#22283A;line-height:1.6}
+.wrap{max-width:760px;margin:0 auto;padding:40px 24px 80px}
+.hdr{font-size:14px;font-weight:800;color:#0F1F3D;margin-bottom:6px}
+.hdr em{color:#D4A843;font-style:normal}
+h1{font-size:26px;color:#0F1F3D;margin:24px 0 4px}
+.maj{font-size:13px;color:#7A8194;margin-bottom:20px}
+h2{font-size:16px;color:#0F1F3D;margin:28px 0 8px}
+p,li{font-size:14px;color:#3A4256}
+ul{margin:8px 0 8px 20px}
+a{color:#0F1F3D}
+.todo{background:#FFF4D6;border:1px solid #E9C46A;color:#7A5B00;padding:2px 6px;border-radius:4px;font-weight:600}
+.card{background:#fff;border-radius:14px;padding:28px 32px;box-shadow:0 2px 20px rgba(15,31,61,0.08)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hdr">Négoce<em>ID</em></div>
+  <div class="card">
+    <h1>Conditions générales d'utilisation</h1>
+    <div class="maj">Dernière mise à jour : 20/08/2026</div>
+
+    <h2>1. Objet</h2>
+    <p>
+      NégoceID est une application permettant aux entreprises du BTP de vérifier l'identité
+      et l'autorisation de leurs salariés lors du retrait de matériaux auprès de négociants
+      partenaires, via un système de carte numérique et de QR code, avec traçabilité des
+      passages (bon de livraison, chantier, horodatage).
+    </p>
+
+    <h2>2. Éditeur</h2>
+    <p>
+      NégoceID est édité par Négoce-ID, SASU au capital de 1 000 €, immatriculée au RCS de
+      Bordeaux sous le numéro SIRET 108 769 209, dont le siège social est situé
+      18 Rue Comteau, 33640 Castres-Gironde. Contact : contact@negoce-id.fr
+    </p>
+
+    <h2>3. Accès au service</h2>
+    <p>
+      L'accès à NégoceID nécessite la création d'un compte entreprise et la souscription à
+      une formule d'abonnement ; l'accès est activé dès confirmation du paiement. Chaque
+      entreprise gère ensuite ses propres comptes salariés et leurs autorisations (statut,
+      chantiers).
+    </p>
+
+    <h2>4. Obligations de l'utilisateur</h2>
+    <ul>
+      <li>Fournir des informations exactes lors de l'inscription.</li>
+      <li>Ne pas partager ses identifiants de connexion avec des tiers non autorisés.</li>
+      <li>Désactiver sans délai le compte d'un salarié qui quitte l'entreprise.</li>
+      <li>Ne pas utiliser le service à des fins frauduleuses ou pour usurper une identité.</li>
+    </ul>
+
+    <h2>5. Tarifs et paiement</h2>
+    <p>
+      NégoceID propose quatre formules, selon la taille de l'entreprise cliente : Indépendant
+      (9 € HT/mois, 1 utilisateur), Petite entreprise (39 € HT/mois, jusqu'à 10 salariés),
+      Entreprise (79 € HT/mois, jusqu'à 50 salariés) et Grande entreprise (au-delà de 50
+      salariés, tarif sur devis). Les tarifs en vigueur sont indiqués sur le site au moment de
+      la souscription. L'abonnement est mensuel, facturé par carte bancaire via Stripe, et
+      reconductible tacitement sauf résiliation. Le nombre de comptes salariés actifs est
+      limité au plafond de la formule souscrite.
+    </p>
+
+    <h2>6. Résiliation</h2>
+    <p>
+      L'utilisateur peut résilier son abonnement à tout moment depuis son espace, ou en
+      contactant contact@negoce-id.fr. La résiliation prend effet à la fin de la période en
+      cours ; aucun remboursement au prorata n'est effectué sauf disposition légale contraire.
+    </p>
+
+    <h2>7. Disponibilité et responsabilité</h2>
+    <p>
+      NégoceID met en œuvre les moyens raisonnables pour assurer la disponibilité et la
+      sécurité du service, sans garantie de continuité absolue. L'éditeur ne saurait être
+      tenu responsable des conséquences d'une interruption de service, d'une erreur de saisie
+      par l'utilisateur, ou d'une décision commerciale prise par un négociant sur la base des
+      informations affichées.
+    </p>
+
+    <h2>8. Propriété intellectuelle</h2>
+    <p>
+      La marque « NégoceID » est déposée. Le logiciel, son code, son design et ses contenus
+      sont protégés par le droit de la propriété intellectuelle et restent la propriété
+      exclusive de l'éditeur.
+    </p>
+
+    <h2>9. Données personnelles</h2>
+    <p>
+      Le traitement des données personnelles est décrit dans notre
+      <a href="politique-confidentialite.html">politique de confidentialité</a>.
+    </p>
+
+    <h2>10. Droit applicable</h2>
+    <p>
+      Les présentes CGU sont soumises au droit français. Tout litige relève de la
+      compétence des tribunaux de Bordeaux, sauf disposition légale impérative contraire.
+    </p>
+  </div>
+</div>
+</body>
+</html>
