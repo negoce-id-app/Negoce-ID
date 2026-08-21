@@ -3612,6 +3612,7 @@ async function logout() {
   unsubscribeNegociants();
   negociantLoginUnseen = 0;
   document.title = "NégoceID — Admin";
+  document.getElementById("hdrCompany").textContent = "Super Admin";
   await supabase.auth.signOut();
 }
 
