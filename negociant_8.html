@@ -1287,11 +1287,16 @@ async function pasteLienBl(inputId) {
   if (!el) return;
   try {
     var text = await navigator.clipboard.readText();
-    if (text) el.value = text.trim();
+    if (text) { el.value = text.trim(); return; }
   } catch(e) {
     console.error("pasteLienBl error", e);
-    alert("❌ Impossible de lire le presse-papiers automatiquement — collez le lien manuellement dans le champ (Cmd+V / Ctrl+V).");
+    // Safari (surtout sur iPhone/iPad) bloque très souvent la lecture
+    // automatique du presse-papiers, même sur clic explicite — au lieu
+    // d'un message d'erreur bloquant, on met simplement le focus sur le
+    // champ : ça fait apparaître la bulle "Coller" native au-dessus du
+    // clavier, et l'utilisateur n'a plus qu'à appuyer dessus.
   }
+  el.focus();
 }
 
 // Ajoute ou corrige le lien du bon de livraison d'un passage déjà validé —
