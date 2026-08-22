@@ -307,16 +307,6 @@ body{font-family:'Inter',sans-serif;background:var(--bg);display:flex;flex-direc
       <div class="err" id="chantierErr" style="display:none;margin-top:8px;max-width:none">❌ Sélectionnez un chantier autorisé avant de valider le retrait</div>
       <div style="margin-top:14px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-          <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.8px">📄 N° de bon de livraison</div>
-          <div class="bl-optional" style="background:rgba(229,57,53,0.28);color:#FFB4B0">Obligatoire</div>
-        </div>
-        <div class="bl-row">
-          <input class="bl-input" id="blInput" type="text" placeholder="N° BL" autocomplete="off" autocorrect="off" spellcheck="false" onfocus="cancelAutoReset()" oninput="document.getElementById('blErr').style.display='none'" onkeydown="if(event.key==='Enter')saveBL()">
-        </div>
-        <div class="err" id="blErr" style="display:none;margin-top:8px;max-width:none">❌ Le n° de bon de livraison est obligatoire</div>
-      </div>
-      <div style="margin-top:14px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
           <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.8px">📎 Document du bon de livraison</div>
           <div class="bl-optional">Optionnel</div>
         </div>
@@ -1107,7 +1097,6 @@ async function showResult(code, pin) {
     : '<div style="font-size:13px;color:var(--red)">Aucun chantier autorisé</div>';
 
   document.getElementById("blCard").style.display = ok ? "block" : "none";
-  document.getElementById("blInput").value = "";
   var lienBlEl0 = document.getElementById("lienBlInput");
   if (lienBlEl0) lienBlEl0.value = "";
   var blFileStatusEl0 = document.getElementById("blFileStatus");
@@ -1119,7 +1108,6 @@ async function showResult(code, pin) {
   window._currentAuthorizedChantiers = (user && Array.isArray(user.chantiers)) ? user.chantiers : [];
   renderChantierField(window._currentAuthorizedChantiers);
   document.getElementById("chantierErr").style.display = "none";
-  document.getElementById("blErr").style.display = "none";
   document.getElementById("blSaved").style.display = "none";
   // Le passage n'est présenté comme confirmé qu'une fois un chantier autorisé validé (saveBL)
   document.getElementById("savedCard").style.display = "none";
@@ -1174,22 +1162,15 @@ function renderChantierField(chantiers) {
 }
 
 async function saveBL() {
-  var bl = document.getElementById("blInput").value.trim().toUpperCase();
   var lienBlEl = document.getElementById("lienBlInput");
   var lienBl = lienBlEl ? lienBlEl.value.trim() : "";
   var chantier = document.getElementById("chantierInput").value.trim();
   var errEl = document.getElementById("chantierErr");
-  var blErrEl = document.getElementById("blErr");
   errEl.style.display = "none";
-  blErrEl.style.display = "none";
 
   if (!chantier) {
     errEl.textContent = "❌ Sélectionnez un chantier autorisé avant de valider le retrait";
     errEl.style.display = "block";
-    return;
-  }
-  if (!bl) {
-    blErrEl.style.display = "block";
     return;
   }
   if (!currentPassageId) {
@@ -1207,7 +1188,6 @@ async function saveBL() {
     var { data, error } = await supabase.rpc('validate_passage_chantier', {
       p_passage_id: currentPassageId,
       p_chantier: chantier,
-      p_bon_livraison: bl || null,
       p_lien_bl: lienBl || null
     });
     if (error) throw error;
@@ -1226,7 +1206,7 @@ async function saveBL() {
     return;
   }
 
-  var msg = "Chantier : " + chantier + (bl ? " · BL " + bl : "");
+  var msg = "Chantier : " + chantier + (lienBl ? " · 📎 document joint" : "");
   document.getElementById("blSavedTxt").textContent = msg + " ✓";
   document.getElementById("blSaved").style.display = "flex";
   document.getElementById("savedCard").style.display = "flex";
