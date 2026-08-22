@@ -2604,10 +2604,10 @@ tr:hover td{background:#FAFBFF}
           <option value="all">Isoler un salarié — tous</option>
         </select>
       </div>
-      <table>
-        <thead><tr><th>Date / Heure</th><th>Code</th><th>Salarié</th><th>Agence</th><th>Chantier</th><th>Bon de livraison</th><th>Résultat</th></tr></thead>
-        <tbody id="passagesBody"><tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">⏳ Chargement...</td></tr></tbody>
-      </table>
+      <div class="table-scroll"><table>
+        <thead><tr><th>Date / Heure</th><th>Code</th><th>Salarié</th><th>Agence</th><th>Chantier</th><th>Bon de livraison</th><th>Document</th><th>Résultat</th></tr></thead>
+        <tbody id="passagesBody"><tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px">⏳ Chargement...</td></tr></tbody>
+      </table></div>
     </div>
 
     <!-- FOURNISSEURS -->
@@ -2715,7 +2715,7 @@ tr:hover td{background:#FAFBFF}
       <input class="form-in" id="salDateNaissance" type="date" oninput="autoFillSalarieCode()">
     </div>
     <div class="form-group">
-      <label class="form-lbl">Code unique <span style="text-transform:none;font-weight:500;color:var(--muted)">(généré automatiquement, modifiable)</span></label>
+      <label class="form-lbl">Code unique <span id="salCodeHint" style="text-transform:none;font-weight:500;color:var(--muted)">(généré automatiquement, modifiable)</span></label>
       <input class="form-in" id="salCode" type="text" placeholder="MAG-XXXXXX" style="font-family:monospace;letter-spacing:2px;text-transform:uppercase" oninput="codeManuallyEdited=true">
     </div>
     <div class="form-group">
@@ -4140,7 +4140,7 @@ function renderAll() {
   var pb = document.getElementById("passagesBody");
   var blCounts = getBLCounts();
   if (filteredPassages.length === 0) {
-    pb.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">Aucun passage pour ce salarié</td></tr>';
+    pb.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px">Aucun passage pour ce salarié</td></tr>';
   } else {
     pb.innerHTML = filteredPassages.map(function(p) {
       var d = p.created_at ? new Date(p.created_at).toLocaleString("fr-FR") : "—";
@@ -4155,6 +4155,12 @@ function renderAll() {
         ? '<span title="'+esc(blRaw)+'" style="display:inline-block;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom;font-family:monospace;font-size:11px;font-weight:700;background:'+(isDup?"#FDEDED":"#FFF8EC")+';color:'+(isDup?"#C62828":"#B45309")+';padding:3px 8px;border-radius:6px">'+blDisplay+'</span>'
           + (isDup ? '<div style="font-size:10px;color:#C62828;font-weight:700;margin-top:2px">⚠️ utilisé '+blCounts[blKey]+'x</div>' : '')
         : '<span style="color:var(--muted);font-size:11px">—</span>';
+      // Document joint (photo/PDF du BL, envoyé par le négociant depuis
+      // negociant_8.html) : simple lien de consultation, distinct du numéro
+      // de BL ci-dessus qui n'est qu'une référence texte.
+      var blDocCell = p.lien_bl
+        ? '<a href="'+esc(p.lien_bl)+'" target="_blank" rel="noopener" style="font-size:11px;font-weight:700;color:var(--gold);text-decoration:underline">📎 Voir</a>'
+        : '<span style="color:var(--muted);font-size:11px">—</span>';
       return '<tr>'+
         '<td style="font-size:12px">'+d+'</td>'+
         '<td><code style="font-size:11px;font-weight:700">'+esc(p.code_salarie)+'</code></td>'+
@@ -4162,6 +4168,7 @@ function renderAll() {
         '<td>'+esc(p.agence)+'</td>'+
         '<td>'+(p.chantier?'<span style="font-size:12px;font-weight:600;color:var(--navy)">🏗️ '+esc(p.chantier)+'</span>':'<span style="color:var(--muted);font-size:11px">—</span>')+'</td>'+
         '<td>'+blCell+'</td>'+
+        '<td>'+blDocCell+'</td>'+
         '<td><span class="pill '+(p.resultat==="AUTORISE"?"pill-green":"pill-red")+'">'+esc(p.resultat)+'</span></td>'+
       '</tr>';
     }).join("");
@@ -4217,6 +4224,7 @@ function openAddSalarie() {
   codeManuallyEdited = false;
   document.getElementById("salCode").value = currentCompany ? currentCompany.prefix+"-" : "";
   document.getElementById("salCode").readOnly = false;
+  document.getElementById("salCodeHint").textContent = "(généré automatiquement, modifiable)";
   document.getElementById("salNom").value = "";
   document.getElementById("salPrenom").value = "";
   document.getElementById("salDateNaissance").value = "";
@@ -4241,6 +4249,7 @@ function editSalarie(code) {
   codeManuallyEdited = false;
   document.getElementById("salCode").value = s.code;
   document.getElementById("salCode").readOnly = true;
+  document.getElementById("salCodeHint").textContent = "(fixé à la création — non modifiable, pour ne pas invalider les badges déjà imprimés)";
   document.getElementById("salNom").value = s.nom;
   document.getElementById("salPrenom").value = s.prenom || "";
   document.getElementById("salDateNaissance").value = s.date_naissance || "";
