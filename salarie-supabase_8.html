@@ -2523,7 +2523,7 @@ textarea.dmd-in{resize:none;min-height:80px}
     </div>
     <div class="bl-stat">
       <div class="bl-stat-val" id="blAvecBL">0</div>
-      <div class="bl-stat-lbl">Avec BL</div>
+      <div class="bl-stat-lbl">Avec document</div>
     </div>
   </div>
   <div class="bl-list-card">
@@ -2612,7 +2612,7 @@ async function loadBL() {
     if (!Array.isArray(passages)) passages = [];
 
     document.getElementById("blTotal").textContent = passages.length;
-    document.getElementById("blAvecBL").textContent = passages.filter(function(p){return p.bon_livraison;}).length;
+    document.getElementById("blAvecBL").textContent = passages.filter(function(p){return p.lien_bl;}).length;
 
     if (passages.length === 0) {
       document.getElementById("blList").innerHTML = '<div class="bl-empty"><div class="bl-empty-icon">📭</div>Aucun passage enregistré</div>';
@@ -2621,11 +2621,17 @@ async function loadBL() {
 
     document.getElementById("blList").innerHTML = passages.map(function(p) {
       var date = p.created_at ? new Date(p.created_at).toLocaleDateString("fr-FR") + " " + new Date(p.created_at).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"}) : "—";
-      var bl = p.bon_livraison || null;
+      // Le n° de BL saisi à la main a été retiré côté négociant (remplacé par
+      // l'upload direct d'une photo/PDF) : on affiche donc désormais un lien
+      // vers ce document plutôt qu'un numéro de référence.
+      var doc = p.lien_bl || null;
+      var docBadge = doc
+        ? '<a href="'+esc(doc)+'" target="_blank" rel="noopener" class="bl-item-num" style="text-decoration:underline">📎 Document</a>'
+        : '<div class="bl-item-num empty">Sans document</div>';
       return '<div class="bl-item">'+
         '<div class="bl-item-top">'+
           '<div class="bl-item-nego">🏪 '+esc(p.agence||"—")+'</div>'+
-          '<div class="bl-item-num '+(bl?"":"empty")+'">'+(bl?"BL "+esc(bl):"Sans BL")+'</div>'+
+          docBadge+
         '</div>'+
         '<div class="bl-item-meta">'+
           '<span>📅 '+date+'</span>'+
