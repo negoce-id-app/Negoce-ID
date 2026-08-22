@@ -322,8 +322,8 @@ body{font-family:'Inter',sans-serif;background:var(--bg);display:flex;flex-direc
         </div>
         <div class="bl-row">
           <input class="bl-input" id="lienBlInput" type="url" placeholder="Lien vers le document (si déjà disponible)" autocomplete="off" autocorrect="off" spellcheck="false" onfocus="cancelAutoReset()" style="text-transform:none;letter-spacing:normal;font-family:inherit;font-weight:500;font-size:13px">
-          <button type="button" onclick="pasteLienBl('lienBlInput')" title="Coller depuis le presse-papiers" style="flex-shrink:0;padding:0 14px;border-radius:12px;border:1.5px solid rgba(255,255,255,0.25);background:rgba(255,255,255,0.08);color:#fff;font-size:12px;font-weight:700;cursor:pointer">📋 Coller</button>
         </div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.45);margin-top:4px">Cliquez dans le champ puis collez avec Cmd+V (Mac) ou Ctrl+V (Windows) — le bouton "coller automatique" a été retiré, peu fiable selon les navigateurs.</div>
       </div>
       <button class="bl-btn" style="width:100%;margin-top:14px;padding:14px" onclick="saveBL()">✓ Valider le retrait pour ce chantier</button>
       <div class="bl-saved" id="blSaved">
@@ -1277,26 +1277,6 @@ async function loadHistorique() {
   } catch(e) {
     document.getElementById("histoList").innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted)">⚠️ Erreur de chargement</div>';
   }
-}
-
-// Récupère automatiquement le lien depuis le presse-papiers, pour éviter
-// au négociant de le retaper à la main : il copie le lien dans son propre
-// logiciel de compta, revient sur NégoceID, et un clic suffit à le coller.
-async function pasteLienBl(inputId) {
-  var el = document.getElementById(inputId);
-  if (!el) return;
-  try {
-    var text = await navigator.clipboard.readText();
-    if (text) { el.value = text.trim(); return; }
-  } catch(e) {
-    console.error("pasteLienBl error", e);
-    // Safari (surtout sur iPhone/iPad) bloque très souvent la lecture
-    // automatique du presse-papiers, même sur clic explicite — au lieu
-    // d'un message d'erreur bloquant, on met simplement le focus sur le
-    // champ : ça fait apparaître la bulle "Coller" native au-dessus du
-    // clavier, et l'utilisateur n'a plus qu'à appuyer dessus.
-  }
-  el.focus();
 }
 
 // Ajoute ou corrige le lien du bon de livraison d'un passage déjà validé —
