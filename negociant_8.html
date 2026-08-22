@@ -354,10 +354,9 @@ body{font-family:'Inter',sans-serif;background:var(--bg);display:flex;flex-direc
     </div>
     <div class="manual-card">
       <div class="box-lbl">⌨️ Pas de douchette ni de caméra ?</div>
-      <div style="font-size:12px;color:var(--muted);margin:6px 0 10px">Tapez le code du salarié ET son code PIN à 4 chiffres (le même que pour "Ma carte") — obligatoire ici car, contrairement à un scan, rien ne prouve que le salarié a physiquement sa carte/son téléphone sous les yeux. Puis comparez le code de confirmation affiché avec celui sur son téléphone.</div>
+      <div style="font-size:12px;color:var(--muted);margin:6px 0 10px">Tapez le code du salarié, puis comparez bien le code de confirmation affiché et la photo avec le salarié devant vous avant de valider le retrait.</div>
       <div style="display:flex;gap:8px">
-        <input class="manual-code-input" id="manualCodeInput" type="text" placeholder="Code salarié (ex: MAG-123456)" autocomplete="off" autocorrect="off" spellcheck="false" onkeydown="if(event.key==='Enter')document.getElementById('manualPinInput').focus()" style="flex:2">
-        <input class="manual-code-input" id="manualPinInput" type="password" inputmode="numeric" maxlength="4" placeholder="PIN" autocomplete="off" autocorrect="off" spellcheck="false" onkeydown="if(event.key==='Enter')submitManualCode()" style="flex:1;text-align:center">
+        <input class="manual-code-input" id="manualCodeInput" type="text" placeholder="Code salarié (ex: MAG-123456)" autocomplete="off" autocorrect="off" spellcheck="false" onkeydown="if(event.key==='Enter')submitManualCode()" style="flex:2">
         <button class="btn-cam" style="width:auto;padding:0 18px" onclick="submitManualCode()">Vérifier</button>
       </div>
       <div id="manualErr" style="display:none;color:var(--red);font-size:12px;margin-top:8px;font-weight:600"></div>
@@ -922,29 +921,19 @@ document.addEventListener("keydown", function(e) {
 // Saisie manuelle du code (pas de douchette, pas de caméra) — passe
 // par le même showResult() que la douchette/caméra, donc le code de
 // confirmation à comparer avec le téléphone du salarié s'affiche pareil.
-// Contrairement au scan QR/douchette (qui prouve que la carte/l'écran du
-// salarié est physiquement présent), une simple saisie de code ne prouve
-// rien — n'importe qui connaissant/ayant vu le code pourrait sinon se
-// faire passer pour lui. Le PIN à 4 chiffres est donc OBLIGATOIRE ici
-// (voir migration 59 / 81, log_passage vérifie p_pin via verify_salarie_pin,
-// avec son propre verrouillage anti-bruteforce déjà en place).
+// Pas de PIN demandé ici (retiré à la demande du client : le code de
+// confirmation + la photo affichés servent déjà de vérification visuelle,
+// et faire taper son PIN au négociant aurait cassé la confidentialité de
+// ce PIN — contrairement à "Ma carte" où le salarié le tape lui-même sur
+// son propre téléphone, ici c'est le poste du négociant qui est utilisé).
 function submitManualCode() {
   var codeInput = document.getElementById("manualCodeInput");
-  var pinInput = document.getElementById("manualPinInput");
   var errEl = document.getElementById("manualErr");
   var code = codeInput.value.trim().toUpperCase();
-  var pin = pinInput.value.trim();
   errEl.style.display = "none";
   if (!code) return;
-  if (!/^[0-9]{4}$/.test(pin)) {
-    errEl.textContent = "❌ Le code PIN à 4 chiffres du salarié est obligatoire pour une saisie manuelle.";
-    errEl.style.display = "block";
-    pinInput.focus();
-    return;
-  }
   codeInput.value = "";
-  pinInput.value = "";
-  showResult(code, pin);
+  showResult(code);
 }
 
 // Extrait le code salarié depuis le contenu brut d'un QR (ou d'une saisie/scan USB) :
