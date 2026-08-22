@@ -308,7 +308,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);display:flex;flex-direc
       <div style="margin-top:14px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
           <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.8px">📎 Document du bon de livraison</div>
-          <div class="bl-optional">Optionnel</div>
+          <div class="bl-optional" style="background:rgba(212,168,67,0.28);color:#F5D98A">Fortement recommandé</div>
         </div>
         <input type="file" id="blFileInput" accept="image/*,application/pdf" capture="environment" style="display:none" onchange="onBlFileChosen(this)">
         <input type="hidden" id="lienBlInput" value="">
@@ -1176,6 +1176,13 @@ async function saveBL() {
   if (!currentPassageId) {
     errEl.textContent = "❌ Passage non enregistré côté serveur — rescannez le salarié";
     errEl.style.display = "block";
+    return;
+  }
+
+  // Le document n'est pas obligatoire (pas de blocage technique), mais
+  // fortement recommandé : on demande une confirmation explicite avant de
+  // valider sans rien joindre, plutôt que de laisser passer silencieusement.
+  if (!lienBl && !confirm("Aucun document (photo/PDF) du bon de livraison n'est joint. Continuer quand même ?")) {
     return;
   }
 
