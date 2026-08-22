@@ -2605,8 +2605,8 @@ tr:hover td{background:#FAFBFF}
         </select>
       </div>
       <div class="table-scroll"><table>
-        <thead><tr><th>Date / Heure</th><th>Code</th><th>Salarié</th><th>Agence</th><th>Chantier</th><th>Bon de livraison</th><th>Document</th><th>Résultat</th></tr></thead>
-        <tbody id="passagesBody"><tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px">⏳ Chargement...</td></tr></tbody>
+        <thead><tr><th>Date / Heure</th><th>Code</th><th>Salarié</th><th>Agence</th><th>Chantier</th><th>Document</th><th>Résultat</th></tr></thead>
+        <tbody id="passagesBody"><tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">⏳ Chargement...</td></tr></tbody>
       </table></div>
     </div>
 
@@ -4074,19 +4074,6 @@ function getFilteredPassages() {
   return passages.filter(function(p) { return p.code_salarie === salarie; });
 }
 
-// Compte les occurrences de chaque n° de BL sur l'ensemble des passages chargés
-// (pas seulement le sous-ensemble filtré) pour repérer un BL réutilisé par erreur ou en fraude.
-function getBLCounts() {
-  var counts = {};
-  passages.forEach(function(p) {
-    if (p.bon_livraison) {
-      var key = String(p.bon_livraison).trim().toUpperCase();
-      counts[key] = (counts[key] || 0) + 1;
-    }
-  });
-  return counts;
-}
-
 function renderAll() {
   var filteredPassages = getFilteredPassages();
   var actifs = salaries.filter(function(s){return s.statut==="ACTIF";}).length;
@@ -4138,26 +4125,13 @@ function renderAll() {
 
   // Table passages
   var pb = document.getElementById("passagesBody");
-  var blCounts = getBLCounts();
   if (filteredPassages.length === 0) {
-    pb.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px">Aucun passage pour ce salarié</td></tr>';
+    pb.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">Aucun passage pour ce salarié</td></tr>';
   } else {
     pb.innerHTML = filteredPassages.map(function(p) {
       var d = p.created_at ? new Date(p.created_at).toLocaleString("fr-FR") : "—";
-      var blKey = p.bon_livraison ? String(p.bon_livraison).trim().toUpperCase() : "";
-      var isDup = blKey && blCounts[blKey] > 1;
-      // Un texte de BL anormalement long (ex: lien collé par erreur) ne doit
-      // jamais étirer la colonne — on l'affiche tronqué, avec le texte complet
-      // visible au survol (title).
-      var blRaw = p.bon_livraison ? String(p.bon_livraison) : "";
-      var blDisplay = blRaw.length > 24 ? esc(blRaw.slice(0, 24)) + "…" : esc(blRaw);
-      var blCell = p.bon_livraison
-        ? '<span title="'+esc(blRaw)+'" style="display:inline-block;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom;font-family:monospace;font-size:11px;font-weight:700;background:'+(isDup?"#FDEDED":"#FFF8EC")+';color:'+(isDup?"#C62828":"#B45309")+';padding:3px 8px;border-radius:6px">'+blDisplay+'</span>'
-          + (isDup ? '<div style="font-size:10px;color:#C62828;font-weight:700;margin-top:2px">⚠️ utilisé '+blCounts[blKey]+'x</div>' : '')
-        : '<span style="color:var(--muted);font-size:11px">—</span>';
       // Document joint (photo/PDF du BL, envoyé par le négociant depuis
-      // negociant_8.html) : simple lien de consultation, distinct du numéro
-      // de BL ci-dessus qui n'est qu'une référence texte.
+      // negociant_8.html).
       var blDocCell = p.lien_bl
         ? '<a href="'+esc(p.lien_bl)+'" target="_blank" rel="noopener" style="font-size:11px;font-weight:700;color:var(--gold);text-decoration:underline">📎 Voir</a>'
         : '<span style="color:var(--muted);font-size:11px">—</span>';
@@ -4167,7 +4141,6 @@ function renderAll() {
         '<td>'+esc(p.nom_salarie)+'</td>'+
         '<td>'+esc(p.agence)+'</td>'+
         '<td>'+(p.chantier?'<span style="font-size:12px;font-weight:600;color:var(--navy)">🏗️ '+esc(p.chantier)+'</span>':'<span style="color:var(--muted);font-size:11px">—</span>')+'</td>'+
-        '<td>'+blCell+'</td>'+
         '<td>'+blDocCell+'</td>'+
         '<td><span class="pill '+(p.resultat==="AUTORISE"?"pill-green":"pill-red")+'">'+esc(p.resultat)+'</span></td>'+
       '</tr>';
