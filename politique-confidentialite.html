@@ -28,7 +28,7 @@ th{color:#0F1F3D;font-weight:700}
   <div class="hdr">Négoce<em>ID</em></div>
   <div class="card">
     <h1>Politique de confidentialité</h1>
-    <div class="maj">Dernière mise à jour : 20/08/2026</div>
+    <div class="maj">Dernière mise à jour : 22/08/2026</div>
 
     <h2>1. Responsable du traitement</h2>
     <p>
@@ -40,15 +40,17 @@ th{color:#0F1F3D;font-weight:700}
     <table>
       <tr><th>Catégorie</th><th>Exemples</th><th>Concerne</th></tr>
       <tr><td>Compte entreprise</td><td>Nom, email, mot de passe (chiffré)</td><td>Admin entreprise</td></tr>
-      <tr><td>Compte salarié</td><td>Nom, prénom, date de naissance, poste, code, chantiers autorisés, photo, code PIN (chiffré)</td><td>Salariés</td></tr>
+      <tr><td>Compte salarié</td><td>Nom, prénom, date de naissance, poste, code, email et téléphone (facultatifs, pour la connexion), chantiers autorisés, photo, code PIN (chiffré)</td><td>Salariés</td></tr>
       <tr><td>Compte négociant</td><td>Nom d'agence, email, mot de passe (chiffré)</td><td>Agences partenaires</td></tr>
-      <tr><td>Passages</td><td>Code salarié, agence, résultat, n° de bon de livraison, chantier, date/heure</td><td>Salariés</td></tr>
+      <tr><td>Passages</td><td>Code salarié, agence, résultat, document du bon de livraison (photo ou PDF, facultatif), chantier, date/heure</td><td>Salariés</td></tr>
     </table>
 
     <h2>3. Finalités du traitement</h2>
     <ul>
       <li>Vérifier l'identité et l'autorisation d'un salarié lors du retrait de matériaux.</li>
-      <li>Assurer la traçabilité des passages en cas de litige.</li>
+      <li>Assurer la traçabilité des passages en cas de litige, y compris via le document de bon de livraison le cas échéant.</li>
+      <li>Permettre la connexion du salarié par son code, son email ou son numéro de téléphone.</li>
+      <li>Vérifier automatiquement les informations de l'entreprise (nom, département) auprès du registre officiel des entreprises lors de l'inscription, à partir du seul numéro SIRET.</li>
       <li>Gérer les comptes et l'accès au service.</li>
       <li>Facturer l'abonnement souscrit.</li>
     </ul>
@@ -62,14 +64,37 @@ th{color:#0F1F3D;font-weight:700}
     <h2>5. Durée de conservation</h2>
     <p>
       Les données sont conservées pendant la durée de l'abonnement, puis 6 mois après la
-      résiliation, sauf obligation légale de conservation plus longue.
+      résiliation, sauf obligation légale de conservation plus longue. Deux exceptions
+      s'appliquent, propres à la nature du document :
     </p>
+    <ul>
+      <li>
+        <strong>Documents de bon de livraison</strong> (photo ou PDF) : conservés 90 jours
+        à compter du passage, puis supprimés automatiquement du stockage. Le passage
+        lui-même (date, chantier, salarié, résultat) reste consultable au-delà de ce délai
+        dans l'historique — seul le fichier disparaît. Chaque suppression automatique est
+        journalisée en interne à des fins de traçabilité.
+      </li>
+      <li>
+        <strong>Photos d'identité des salariés</strong> : conservées tant que le compte
+        salarié concerné existe, sans suppression automatique liée à l'ancienneté du
+        fichier — elles ne sont retirées que lors du remplacement de la photo ou de la
+        suppression du compte par l'entreprise.
+      </li>
+    </ul>
 
     <h2>6. Destinataires et sous-traitants</h2>
     <p>
-      Les données sont hébergées par Supabase Inc. (base de données et authentification),
-      sur des serveurs situés dans l'Union européenne (Francfort, Allemagne), et par
-      GitHub, Inc. (hébergement du site).
+      Les données sont hébergées par Supabase Inc. (base de données, authentification et
+      stockage des photos/documents), sur des serveurs situés dans l'Union européenne
+      (Francfort, Allemagne), et par GitHub, Inc. (hébergement du site). Le paiement des
+      abonnements est traité par Stripe Payments Europe, Ltd., qui reçoit les informations
+      de facturation et de carte bancaire nécessaires au paiement ; ces données ne sont ni
+      stockées ni consultables par NégoceID. Lors de l'inscription d'une entreprise, le
+      numéro SIRET saisi est transmis au service public de recherche des entreprises
+      (recherche-entreprises.api.gouv.fr, base ouverte de l'État) pour vérifier
+      automatiquement le nom et le département de l'établissement ; seul le SIRET (donnée
+      publique d'entreprise) est transmis à cette occasion.
     </p>
 
     <h2>7. Sécurité</h2>
