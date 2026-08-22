@@ -346,7 +346,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);display:flex;flex-direc
       <div class="box-lbl">⌨️ Pas de douchette ni de caméra ?</div>
       <div style="font-size:12px;color:var(--muted);margin:6px 0 10px">Tapez le code du salarié, puis comparez bien le code de confirmation affiché et la photo avec le salarié devant vous avant de valider le retrait.</div>
       <div style="display:flex;gap:8px">
-        <input class="manual-code-input" id="manualCodeInput" type="text" placeholder="Code salarié (ex: MAG-123456)" autocomplete="off" autocorrect="off" spellcheck="false" onkeydown="if(event.key==='Enter')submitManualCode()" style="flex:2">
+        <input class="manual-code-input" id="manualCodeInput" type="text" placeholder="Code, email ou téléphone du salarié" autocomplete="off" autocorrect="off" spellcheck="false" onkeydown="if(event.key==='Enter')submitManualCode()" style="flex:2">
         <button class="btn-cam" style="width:auto;padding:0 18px" onclick="submitManualCode()">Vérifier</button>
       </div>
       <div id="manualErr" style="display:none;color:var(--red);font-size:12px;margin-top:8px;font-weight:600"></div>
@@ -917,13 +917,23 @@ document.addEventListener("keydown", function(e) {
 // et faire taper son PIN au négociant aurait cassé la confidentialité de
 // ce PIN — contrairement à "Ma carte" où le salarié le tape lui-même sur
 // son propre téléphone, ici c'est le poste du négociant qui est utilisé).
-function submitManualCode() {
+async function submitManualCode() {
   var codeInput = document.getElementById("manualCodeInput");
   var errEl = document.getElementById("manualErr");
-  var code = codeInput.value.trim().toUpperCase();
+  var raw = codeInput.value.trim();
   errEl.style.display = "none";
-  if (!code) return;
+  if (!raw) return;
   codeInput.value = "";
+  var code = raw.toUpperCase();
+  // Accepte aussi l'email ou le téléphone du salarié en plus de son code
+  // interne — même fonction de résolution que la connexion espace salarié
+  // (negoceid-53). Si rien n'est trouvé, on retombe sur le texte tapé tel
+  // quel (comportement identique à avant) : showResult() gère déjà
+  // proprement le cas "code non reconnu".
+  try {
+    var { data, error } = await supabase.rpc('resolve_salarie_identifiant', { p_identifiant: raw });
+    if (!error && data) code = data;
+  } catch(e) { console.error("resolve_salarie_identifiant error", e); }
   showResult(code);
 }
 
