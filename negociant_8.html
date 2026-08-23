@@ -1486,7 +1486,7 @@ function renderHistoList() {
     var lienBlHtml = p.lien_bl
       ? '<a href="'+esc(p.lien_bl)+'" target="_blank" rel="noopener" class="histo-bl" style="text-decoration:underline">📎 Document BL</a>'
         +' <span class="histo-bl" style="cursor:pointer;opacity:0.7" onclick="editLienBl('+p.id+')">✏️</span>'
-        +(blAjouteLe ? '<span class="histo-bl" style="opacity:0.65;font-weight:600">(ajouté le '+blAjouteLe+')</span>' : '')
+        +(blAjouteLe ? '<span class="histo-bl" style="display:block;opacity:0.65;font-weight:600">(ajouté le '+blAjouteLe+')</span>' : '')
       : '<span class="histo-bl" style="cursor:pointer;opacity:0.7" onclick="editLienBl('+p.id+')">➕ Joindre le BL</span>';
     var nomEntreprise = p.company_id ? (histoEntreprisesMap[p.company_id] || null) : null;
     var resultBadge = '<div class="histo-result '+(ok?"ok":"ko")+'">'+(ok?"✅ Autorisé":"🚫 Refusé")+'</div>';
