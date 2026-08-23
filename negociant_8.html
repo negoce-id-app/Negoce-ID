@@ -152,6 +152,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);display:flex;flex-direc
 .dmn-reponse strong{display:block;font-size:9px;text-transform:uppercase;letter-spacing:0.6px;color:var(--green);margin-bottom:3px;font-weight:800}
 
 /* ÉCRAN LARGE (ordinateur / tablette) */
+.histo-filtres{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
 @media (min-width:900px){
   html,body{overflow:auto}
   body{max-width:1000px}
@@ -161,6 +162,16 @@ body{font-family:'Inter',sans-serif;background:var(--bg);display:flex;flex-direc
   .cam-wrap{height:360px}
   #resultSection{max-width:620px;margin:0 auto;width:100%}
   #sHistorique > div{max-width:700px;margin:0 auto;width:100%}
+}
+/* Sur les très grands écrans (poste de comptoir / bureau), l'app ne doit
+   pas rester coincée dans une colonne étroite avec beaucoup d'espace
+   perdu de chaque côté : on élargit progressivement, et les filtres de
+   l'historique passent sur une seule ligne au lieu de s'empiler. */
+@media (min-width:1300px){
+  body{max-width:1320px}
+  #sHistorique > div{max-width:1100px}
+  .histo-filtres{flex-direction:row;flex-wrap:wrap;align-items:flex-start;margin-bottom:16px}
+  .histo-filtres > *{flex:1;min-width:200px;margin-bottom:0!important}
 }
 </style>
 </head>
@@ -410,21 +421,23 @@ body{font-family:'Inter',sans-serif;background:var(--bg);display:flex;flex-direc
         Passages de mon agence
         <button class="btn-refresh" onclick="loadHistorique()">↻</button>
       </div>
-      <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;align-items:center">
-        <input type="date" id="filtreDateDebut" style="flex:1;min-width:130px;padding:9px 10px;border:2px solid var(--border);border-radius:10px;font-size:13px;color:var(--navy)">
-        <span style="color:var(--muted);font-size:12px">→</span>
-        <input type="date" id="filtreDateFin" style="flex:1;min-width:130px;padding:9px 10px;border:2px solid var(--border);border-radius:10px;font-size:13px;color:var(--navy)">
+      <div class="histo-filtres">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <input type="date" id="filtreDateDebut" style="flex:1;min-width:130px;padding:9px 10px;border:2px solid var(--border);border-radius:10px;font-size:13px;color:var(--navy)">
+          <span style="color:var(--muted);font-size:12px">→</span>
+          <input type="date" id="filtreDateFin" style="flex:1;min-width:130px;padding:9px 10px;border:2px solid var(--border);border-radius:10px;font-size:13px;color:var(--navy)">
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn-refresh" style="flex:1" onclick="loadHistorique()">🔍 Rechercher sur la période</button>
+          <button class="btn-refresh" onclick="reinitialiserPeriodeHisto()">✕ Tout afficher</button>
+        </div>
+        <select id="filtreEntrepriseHisto" onchange="onFiltreEntrepriseHistoChange()" style="width:100%;padding:9px 12px;border:2px solid var(--border);border-radius:10px;font-size:13px;color:var(--navy);background:var(--white)">
+          <option value="">Toutes les entreprises</option>
+        </select>
+        <select id="filtreChantierHisto" onchange="renderHistoList()" style="width:100%;padding:9px 12px;border:2px solid var(--border);border-radius:10px;font-size:13px;color:var(--navy);background:var(--white)">
+          <option value="">Tous les chantiers</option>
+        </select>
       </div>
-      <div style="display:flex;gap:8px;margin-bottom:12px">
-        <button class="btn-refresh" style="flex:1" onclick="loadHistorique()">🔍 Rechercher sur la période</button>
-        <button class="btn-refresh" onclick="reinitialiserPeriodeHisto()">✕ Tout afficher</button>
-      </div>
-      <select id="filtreEntrepriseHisto" onchange="onFiltreEntrepriseHistoChange()" style="width:100%;padding:9px 12px;border:2px solid var(--border);border-radius:10px;font-size:13px;color:var(--navy);background:var(--white);margin-bottom:8px">
-        <option value="">Toutes les entreprises</option>
-      </select>
-      <select id="filtreChantierHisto" onchange="renderHistoList()" style="width:100%;padding:9px 12px;border:2px solid var(--border);border-radius:10px;font-size:13px;color:var(--navy);background:var(--white);margin-bottom:12px">
-        <option value="">Tous les chantiers</option>
-      </select>
       <div id="blManquantBanner" style="display:none;background:var(--orange-soft);color:var(--orange-dark);border-radius:12px;padding:10px 12px;font-size:12.5px;font-weight:700;margin-bottom:12px"></div>
       <div id="histoList"><div style="text-align:center;padding:24px;color:var(--muted)">⏳ Chargement...</div></div>
       <input type="file" id="histoBlFileInput" accept="image/*,application/pdf" capture="environment" style="display:none" onchange="onHistoBlFileChosen(this)">
