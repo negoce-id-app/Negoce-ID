@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>NégoceID — Admin</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<!-- SheetJS : lecture du fichier importé (xlsx/xls/csv) et génération du
+     modèle téléchargeable — voir openImportSalaries() plus bas. -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
 //---------------------------------------------------------------------
 //
@@ -2582,6 +2585,7 @@ tr:hover td{background:#FAFBFF}
         <div class="section-title">👤 Salariés — <span id="currentCompanyName" style="color:var(--orange)">—</span></div>
         <div class="section-actions">
           <button class="btn-action btn-gold" onclick="openAddSalarie()">+ Ajouter</button>
+          <button class="btn-action btn-outline" onclick="openImportSalaries()">📥 Importer un fichier</button>
           <button class="btn-action btn-outline" onclick="exportCSV('salaries')">⬇️ Export</button>
         </div>
       </div>
@@ -2766,6 +2770,29 @@ tr:hover td{background:#FAFBFF}
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeModal('modalSalarie')">Annuler</button>
       <button class="btn-save" onclick="saveSalarie()">💾 Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- IMPORT DE SALARIÉS DEPUIS UN FICHIER -->
+<div class="modal-bg" id="modalImportSalaries">
+  <div class="modal">
+    <div class="modal-title">📥 Importer des salariés depuis un fichier</div>
+    <div style="font-size:12.5px;color:var(--muted);margin-bottom:14px;line-height:1.5">
+      Chaque ligne du fichier crée un salarié, avec un code unique généré automatiquement — exactement comme pour l'ajout manuel (nom + prénom + date de naissance). Les photos ne peuvent pas être importées en masse : ajoutez-les ensuite salarié par salarié depuis sa fiche.
+    </div>
+    <button class="btn-action btn-outline" onclick="downloadSalariesTemplate()" style="margin-bottom:16px">⬇️ Télécharger le modèle (.xlsx)</button>
+    <div class="form-group">
+      <label class="form-lbl">Fichier (.xlsx ou .csv)</label>
+      <input class="form-in" type="file" id="importFileInput" accept=".xlsx,.xls,.csv" onchange="handleImportFileChosen(this)">
+    </div>
+    <div id="importPreview" style="display:none;font-size:13px;color:var(--navy);font-weight:600;margin-bottom:10px">
+      <span id="importPreviewCount">0</span> ligne(s) détectée(s), prête(s) à importer.
+    </div>
+    <div id="importResults" style="display:none;margin-bottom:10px;background:var(--bg);border-radius:10px;padding:12px"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('modalImportSalaries')">Fermer</button>
+      <button class="btn-save" id="btnLancerImport" onclick="lancerImportSalaries()" disabled>📥 Importer</button>
     </div>
   </div>
 </div>
@@ -4267,6 +4294,219 @@ function autoFillSalarieCode() {
   if (codeManuallyEdited) return;
   var computed = computeSalarieCode();
   if (computed) document.getElementById("salCode").value = computed;
+}
+
+// ── IMPORT DE SALARIÉS DEPUIS UN FICHIER (.xlsx / .csv) ──
+// Même logique de génération de code que le formulaire manuel
+// (computeSalarieCode ci-dessus), mais paramétrée plutôt que lue dans le
+// DOM, pour être réutilisable ligne par ligne pendant l'import. usedCodes
+// est mis à jour au fur et à mesure des insertions réussies, pour éviter
+// toute collision entre deux lignes du même fichier (ex: deux salariés du
+// même nom).
+function generateSalarieCodeFor(nom, prenom, dateNaissanceISO, usedCodes) {
+  if (!currentCompany || !nom || !prenom || !dateNaissanceISO) return "";
+  var datePart = dateNaissanceISO.replace(/-/g, "").slice(2);
+  var base = currentCompany.prefix + "-" + slugPart(nom, 5) + slugPart(prenom, 2) + datePart;
+  var candidate = base, n = 2;
+  while (usedCodes.indexOf(candidate) !== -1) {
+    candidate = base + "-" + n;
+    n++;
+  }
+  return candidate;
+}
+
+// Accepte un objet Date (cellDates:true côté SheetJS pour les fichiers
+// Excel), une date ISO (AAAA-MM-JJ) ou une date française (JJ/MM/AAAA,
+// avec / ou . comme séparateur) — les deux formats qu'un utilisateur est
+// susceptible de taper dans un tableur. Retourne null si illisible plutôt
+// que de deviner, pour ne jamais créer un salarié avec la mauvaise date.
+function parseDateFlexible(v) {
+  if (v === null || v === undefined || v === "") return null;
+  if (v instanceof Date && !isNaN(v.getTime())) {
+    var y = v.getFullYear(), m = String(v.getMonth() + 1).padStart(2, "0"), d = String(v.getDate()).padStart(2, "0");
+    return y + "-" + m + "-" + d;
+  }
+  var s = String(v).trim();
+  if (!s) return null;
+  var mIso = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (mIso) return mIso[1] + "-" + mIso[2].padStart(2, "0") + "-" + mIso[3].padStart(2, "0");
+  var mFr = s.match(/^(\d{1,2})[\/.](\d{1,2})[\/.](\d{4})$/);
+  if (mFr) return mFr[3] + "-" + mFr[2].padStart(2, "0") + "-" + mFr[1].padStart(2, "0");
+  return null;
+}
+
+function normalizeImportHeader(h) {
+  return String(h || "").toUpperCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^A-Z0-9]/g, "");
+}
+// Plusieurs libellés possibles par colonne, pour tolérer les variations
+// courantes (avec/sans accent, singulier/pluriel...) plutôt que d'exiger
+// un intitulé exact — un fichier préparé "à la main" par le client a peu
+// de chances de reprendre nos libellés au caractère près.
+var IMPORT_HEADER_MAP = {};
+[
+  ["NOM", "nom"],
+  ["PRENOM", "prenom"],
+  ["DATEDENAISSANCE", "date_naissance"], ["DATENAISSANCE", "date_naissance"], ["NAISSANCE", "date_naissance"],
+  ["POSTE", "poste"],
+  ["EMAIL", "email"], ["MAIL", "email"],
+  ["TELEPHONE", "telephone"], ["TEL", "telephone"],
+  ["TYPE", "type"],
+  ["STATUT", "statut"], ["STATUS", "statut"],
+  ["CHANTIERS", "chantiers"], ["CHANTIER", "chantiers"], ["CHANTIERSAUTORISES", "chantiers"]
+].forEach(function(pair) { IMPORT_HEADER_MAP[pair[0]] = pair[1]; });
+
+var importedRows = [];
+
+function openImportSalaries() {
+  document.getElementById("importFileInput").value = "";
+  document.getElementById("importPreview").style.display = "none";
+  document.getElementById("importResults").style.display = "none";
+  document.getElementById("importResults").innerHTML = "";
+  document.getElementById("btnLancerImport").disabled = true;
+  document.getElementById("btnLancerImport").textContent = "📥 Importer";
+  importedRows = [];
+  document.getElementById("modalImportSalaries").classList.add("open");
+}
+
+function downloadSalariesTemplate() {
+  var headers = ["Nom", "Prénom", "Date de naissance", "Poste", "Email", "Téléphone", "Type", "Statut", "Chantiers"];
+  var example = ["DUPONT", "Vincent", "15/03/1990", "Chef de chantier", "vincent.dupont@exemple.fr", "0612345678", "INTERNE", "ACTIF", "Chantier Bordeaux, Chantier Mérignac"];
+  var hint = ["", "", "JJ/MM/AAAA", "", "optionnel", "optionnel", "INTERNE, INTERIMAIRE ou EXT", "ACTIF ou INACTIF", "séparés par des virgules"];
+  var ws = XLSX.utils.aoa_to_sheet([headers, example, hint]);
+  ws["!cols"] = headers.map(function() { return { wch: 24 }; });
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Salariés");
+  XLSX.writeFile(wb, "modele-import-salaries-negoceid.xlsx");
+}
+
+function handleImportFileChosen(input) {
+  var file = input.files && input.files[0];
+  document.getElementById("importResults").style.display = "none";
+  document.getElementById("importResults").innerHTML = "";
+  importedRows = [];
+  if (!file) {
+    document.getElementById("importPreview").style.display = "none";
+    document.getElementById("btnLancerImport").disabled = true;
+    return;
+  }
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var wb = XLSX.read(e.target.result, { type: "array", cellDates: true });
+      var ws = wb.Sheets[wb.SheetNames[0]];
+      var rowsRaw = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: "" });
+      if (!rowsRaw.length) throw new Error("Fichier vide");
+      var colIndex = {};
+      rowsRaw[0].forEach(function(h, i) {
+        var field = IMPORT_HEADER_MAP[normalizeImportHeader(h)];
+        if (field && colIndex[field] === undefined) colIndex[field] = i;
+      });
+      if (colIndex.nom === undefined) throw new Error('Colonne "Nom" introuvable sur la première ligne du fichier — utilisez le modèle fourni.');
+      var dataRows = rowsRaw.slice(1).filter(function(r) {
+        return r.some(function(c) { return String(c || "").trim() !== ""; });
+      });
+      importedRows = dataRows.map(function(r, idx) {
+        var get = function(field) { return colIndex[field] !== undefined ? String(r[colIndex[field]] || "").trim() : ""; };
+        var typeRaw = get("type").toUpperCase();
+        var type = /INTER.?M/.test(typeRaw) ? "INTERIMAIRE" : /EXT|SOUS/.test(typeRaw) ? "EXT" : "INTERNE";
+        var statut = get("statut").toUpperCase() === "INACTIF" ? "INACTIF" : "ACTIF";
+        var chantiers = get("chantiers").split(",").map(function(c) { return c.trim(); }).filter(Boolean);
+        return {
+          ligne: idx + 2, // +2 : ligne 1 = en-têtes, un tableur commence à 1
+          nom: get("nom"),
+          prenom: get("prenom") || null,
+          date_naissance_brut: get("date_naissance"),
+          poste: get("poste"),
+          email: get("email") || null,
+          telephone: get("telephone") || null,
+          type: type,
+          statut: statut,
+          chantiers: chantiers
+        };
+      }).filter(function(row) {
+        // Ignore silencieusement une éventuelle ligne d'exemple/indication
+        // du modèle si l'utilisateur l'a laissée (ex: "JJ/MM/AAAA" comme
+        // nom n'a aucun sens) — seules les lignes avec un vrai nom comptent.
+        return !!row.nom;
+      });
+    } catch (err) {
+      alert("❌ Impossible de lire ce fichier :\n" + (err.message || err));
+      importedRows = [];
+      document.getElementById("importPreview").style.display = "none";
+      document.getElementById("btnLancerImport").disabled = true;
+      return;
+    }
+    document.getElementById("importPreviewCount").textContent = importedRows.length;
+    document.getElementById("importPreview").style.display = "block";
+    document.getElementById("btnLancerImport").disabled = importedRows.length === 0;
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// Insertion ligne par ligne (et non un seul insert groupé) : le plafond de
+// salariés par plan (check_plan_limit_salaries, déclencheur en base) et les
+// contraintes d'unicité (email/téléphone/code) s'appliquent par ligne — un
+// insert groupé ferait échouer TOUT le lot au premier problème. En important
+// une ligne à la fois, on obtient un vrai bilan : ce qui a marché reste
+// enregistré, et seules les lignes en erreur doivent être corrigées et
+// réimportées.
+async function lancerImportSalaries() {
+  if (!currentCompany) { alert("Aucune entreprise sélectionnée"); return; }
+  if (!importedRows.length) return;
+  var btn = document.getElementById("btnLancerImport");
+  btn.disabled = true;
+  btn.textContent = "⏳ Import en cours...";
+  var usedCodes = (salaries || []).map(function(s) { return s.code; }).slice();
+  var results = { success: [], errors: [] };
+  for (var i = 0; i < importedRows.length; i++) {
+    var row = importedRows[i];
+    var label = "Ligne " + row.ligne + " (" + row.nom + (row.prenom ? " " + row.prenom : "") + ")";
+    var dn = parseDateFlexible(row.date_naissance_brut);
+    if (row.date_naissance_brut && !dn) {
+      results.errors.push({ label: label, message: 'Date de naissance illisible ("' + row.date_naissance_brut + '") — attendu JJ/MM/AAAA' });
+      continue;
+    }
+    var code = generateSalarieCodeFor(row.nom, row.prenom, dn, usedCodes);
+    if (!code) {
+      results.errors.push({ label: label, message: "Prénom et date de naissance requis pour générer le code" });
+      continue;
+    }
+    var data = { code: code, nom: row.nom, prenom: row.prenom, date_naissance: dn, poste: row.poste || "", email: row.email, telephone: row.telephone, type: row.type, statut: row.statut, chantiers: row.chantiers, photo: null, company_id: currentCompany.id };
+    try {
+      var { error } = await supabase.from('salaries').insert(data);
+      if (error) {
+        var friendly = error.message.includes("duplicate key") && error.message.includes("email") ? "cet email est déjà utilisé par un autre salarié"
+          : error.message.includes("duplicate key") && error.message.includes("telephone") ? "ce téléphone est déjà utilisé par un autre salarié"
+          : error.message.includes("duplicate key") && error.message.includes("code") ? "code déjà utilisé (collision imprévue) — réessayez cette ligne seule"
+          : frError(error);
+        results.errors.push({ label: label, message: friendly });
+        continue;
+      }
+      usedCodes.push(code);
+      results.success.push(label + " — code " + code);
+    } catch (e) {
+      results.errors.push({ label: label, message: frError(e) });
+    }
+  }
+  btn.disabled = false;
+  btn.textContent = "📥 Importer";
+  renderImportResults(results);
+  loadData();
+}
+
+function renderImportResults(results) {
+  var html = '<div style="font-weight:700;color:var(--navy);margin-bottom:8px">'
+    + '✅ ' + results.success.length + ' salarié' + (results.success.length > 1 ? 's' : '') + ' importé' + (results.success.length > 1 ? 's' : '')
+    + (results.errors.length ? ' &nbsp;·&nbsp; ⚠️ ' + results.errors.length + ' ligne' + (results.errors.length > 1 ? 's' : '') + ' en erreur' : '')
+    + '</div>';
+  if (results.errors.length) {
+    html += '<div style="max-height:220px;overflow-y:auto;font-size:12.5px;color:var(--red)">'
+      + results.errors.map(function(e) { return '<div style="padding:4px 0;border-bottom:1px solid var(--border)">' + esc(e.label) + ' : ' + esc(e.message) + '</div>'; }).join("")
+      + '</div>';
+  }
+  var box = document.getElementById("importResults");
+  box.innerHTML = html;
+  box.style.display = "block";
 }
 
 function openAddSalarie() {
