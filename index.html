@@ -49,15 +49,18 @@ img,svg{display:block}
 .brand-word{font-size:19px;font-weight:900;letter-spacing:-0.3px;color:var(--dark)}
 .brand-word em{color:var(--orange);font-style:normal}
 .brand-tag{font-size:10.5px;color:var(--muted);font-weight:600;margin-left:44px;margin-top:1px}
-.nav-links{display:flex;align-items:center;gap:28px;font-size:14px;font-weight:700;color:var(--dark)}
-.nav-links a{padding-bottom:4px;border-bottom:2px solid transparent}
-.nav-links a.active{color:var(--orange);border-color:var(--orange)}
-.nav-links a:hover{color:var(--orange)}
-.nav-cta{display:flex;align-items:center;gap:18px}
-.nav-login{font-size:14px;font-weight:700;color:var(--muted)}
+.nav-right{display:flex;align-items:center;gap:24px}
+.nav-link{font-size:14px;font-weight:700;color:var(--dark);padding-bottom:4px;border-bottom:2px solid transparent;white-space:nowrap}
+.nav-link.active{color:var(--orange);border-color:var(--orange)}
+.nav-link:hover{color:var(--orange)}
+.nav-right .btn-orange{padding:11px 22px;box-shadow:none}
+.nav-login{font-size:14px;font-weight:700;color:var(--muted);white-space:nowrap}
 .nav-login:hover{color:var(--dark)}
+@media(max-width:1150px){
+  .nav-negociant-link{display:none}
+}
 @media(max-width:900px){
-  .nav-links{display:none}
+  .nav-link{display:none}
 }
 
 /* ===== HERO ===== */
@@ -190,15 +193,13 @@ footer{background:var(--navy);color:#9BA6BE;padding:44px 0 26px}
       </div>
       <div class="brand-tag">L'autorisation en un clic, la protection pour tous.</div>
     </a>
-    <div class="nav-links">
-      <a href="#top" class="active">Accueil</a>
-      <a href="#comment">Solution</a>
-      <a href="#stats">Fonctionnalités</a>
-      <a href="#audiences">Pour qui ?</a>
-      <a href="#tarifs">Tarifs</a>
-    </div>
-    <div class="nav-cta">
-      <a class="nav-login" href="inscription-negociant.html">Vous êtes négociant ?</a>
+    <div class="nav-right">
+      <a href="#top" class="nav-link active">Accueil</a>
+      <a href="#comment" class="nav-link">Solution</a>
+      <a href="#stats" class="nav-link">Fonctionnalités</a>
+      <a href="#audiences" class="nav-link">Pour qui ?</a>
+      <a href="#tarifs" class="nav-link">Tarifs</a>
+      <a class="nav-login nav-negociant-link" href="inscription-negociant.html">Vous êtes négociant ?</a>
       <a class="nav-login" href="admin-supabase-final.html">Connexion</a>
       <a class="btn btn-orange" href="inscription.html">Créer mon compte</a>
     </div>
@@ -304,6 +305,7 @@ footer{background:var(--navy);color:#9BA6BE;padding:44px 0 26px}
           <div class="aud-title">Pour les négociants / fournisseurs</div>
         </div>
         <ul>
+          <li><span class="tick">✓</span><b>Accès 100% gratuit</b>, sans engagement ni carte bancaire.</li>
           <li><span class="tick">✓</span>Vérifiez en temps réel l'autorisation des salariés, sous-traitants et intérimaires.</li>
           <li><span class="tick">✓</span>Évitez les usurpations et les abus.</li>
           <li><span class="tick">✓</span>Sécurisez vos ventes et votre responsabilité.</li>
@@ -344,6 +346,7 @@ footer{background:var(--navy);color:#9BA6BE;padding:44px 0 26px}
     <div class="eyebrow center" style="text-align:center">Tarifs</div>
     <h2 class="h2 center" style="text-align:center">Une offre simple, adaptée à votre taille</h2>
     <p class="lead center" style="text-align:center;margin-left:auto;margin-right:auto">Sans engagement. Changez de formule à tout moment.</p>
+    <p class="lead center" style="text-align:center;margin-left:auto;margin-right:auto;margin-top:6px">Ces tarifs concernent les entreprises. L'accès pour les négociants et fournisseurs est <b>100% gratuit</b>.</p>
     <div class="pricing-grid">
       <div class="price-card">
         <div class="price-badge">Artisan solo</div>
