@@ -419,6 +419,9 @@ body{font-family:'Inter',sans-serif;background:var(--bg);display:flex;flex-direc
         <button class="btn-refresh" style="flex:1" onclick="loadHistorique()">🔍 Rechercher sur la période</button>
         <button class="btn-refresh" onclick="reinitialiserPeriodeHisto()">✕ Tout afficher</button>
       </div>
+      <select id="filtreEntrepriseHisto" onchange="renderHistoList()" style="width:100%;padding:9px 12px;border:2px solid var(--border);border-radius:10px;font-size:13px;color:var(--navy);background:var(--white);margin-bottom:8px">
+        <option value="">Toutes les entreprises</option>
+      </select>
       <select id="filtreChantierHisto" onchange="renderHistoList()" style="width:100%;padding:9px 12px;border:2px solid var(--border);border-radius:10px;font-size:13px;color:var(--navy);background:var(--white);margin-bottom:12px">
         <option value="">Tous les chantiers</option>
       </select>
@@ -1247,8 +1250,13 @@ async function saveBL() {
 // voir submitManualCode() plus haut.)
 
 // histoPassagesAll : cache local du dernier chargement, réutilisé par
-// renderHistoList() pour filtrer par chantier sans refaire de requête.
+// renderHistoList() pour filtrer par chantier/entreprise sans refaire
+// de requête. histoEntreprisesMap : company_id -> nom, résolu via la
+// fonction dédiée list_entreprises_pour_agence (les passages ne
+// stockent que company_id, un négociant n'a pas d'accès direct à la
+// table entreprises qui contient des données sensibles - SIRET, Stripe).
 var histoPassagesAll = [];
+var histoEntreprisesMap = {};
 
 function reinitialiserPeriodeHisto() {
   document.getElementById("filtreDateDebut").value = "";
@@ -1279,6 +1287,18 @@ async function loadHistorique() {
     if (error) throw error;
     histoPassagesAll = Array.isArray(data) ? data : [];
 
+    // Résout company_id -> nom via la fonction dédiée (accès en lecture
+    // seule, limité aux entreprises ayant un passage dans cette agence).
+    try {
+      var { data: entData, error: entErr } = await supabase.rpc('list_entreprises_pour_agence', { p_agence: currentNego });
+      if (entErr) throw entErr;
+      histoEntreprisesMap = {};
+      (Array.isArray(entData) ? entData : []).forEach(function(e){ histoEntreprisesMap[e.id] = e.nom; });
+    } catch(e) {
+      console.error("list_entreprises_pour_agence error", e);
+      histoEntreprisesMap = {};
+    }
+
     // Peuple le filtre chantier avec les valeurs distinctes présentes,
     // en conservant la sélection en cours si elle existe toujours.
     var chantiers = Array.from(new Set(histoPassagesAll.map(function(p){return p.chantier;}).filter(Boolean)))
@@ -1289,6 +1309,19 @@ async function loadHistorique() {
       + chantiers.map(function(c){return '<option value="'+esc(c)+'">'+esc(c)+'</option>';}).join("");
     if (chantiers.indexOf(currentVal) !== -1) filtreSel.value = currentVal;
 
+    // Peuple le filtre entreprise avec les company_id distincts présents
+    // dans les passages chargés (pas tous ceux renvoyés par la RPC, au
+    // cas où la période/le chantier réduit déjà le résultat).
+    var entIdsPresents = Array.from(new Set(histoPassagesAll.map(function(p){return p.company_id;}).filter(Boolean)));
+    var entOptions = entIdsPresents
+      .map(function(id){ return { id: id, nom: histoEntreprisesMap[id] || id }; })
+      .sort(function(a,b){ return a.nom.localeCompare(b.nom, 'fr'); });
+    var filtreEntSel = document.getElementById("filtreEntrepriseHisto");
+    var currentEntVal = filtreEntSel.value;
+    filtreEntSel.innerHTML = '<option value="">Toutes les entreprises</option>'
+      + entOptions.map(function(e){return '<option value="'+esc(e.id)+'">'+esc(e.nom)+'</option>';}).join("");
+    if (entIdsPresents.indexOf(currentEntVal) !== -1) filtreEntSel.value = currentEntVal;
+
     renderHistoList();
   } catch(e) {
     document.getElementById("histoList").innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted)">⚠️ Erreur de chargement</div>';
@@ -1297,9 +1330,10 @@ async function loadHistorique() {
 
 function renderHistoList() {
   var filtreChantier = document.getElementById("filtreChantierHisto").value;
-  var passages = filtreChantier
-    ? histoPassagesAll.filter(function(p){ return p.chantier === filtreChantier; })
-    : histoPassagesAll;
+  var filtreEntreprise = document.getElementById("filtreEntrepriseHisto").value;
+  var passages = histoPassagesAll;
+  if (filtreChantier) passages = passages.filter(function(p){ return p.chantier === filtreChantier; });
+  if (filtreEntreprise) passages = passages.filter(function(p){ return p.company_id === filtreEntreprise; });
 
   document.getElementById("kpiTotal").textContent = passages.length;
   document.getElementById("kpiOk").textContent = passages.filter(function(p){return p.resultat==="AUTORISE";}).length;
@@ -1344,6 +1378,7 @@ function renderHistoList() {
         +' <span class="histo-bl" style="cursor:pointer;opacity:0.7" onclick="editLienBl('+p.id+')">✏️</span>'
         +(blAjouteLe ? '<span class="histo-bl" style="opacity:0.65;font-weight:600">(ajouté le '+blAjouteLe+')</span>' : '')
       : '<span class="histo-bl" style="cursor:pointer;opacity:0.7" onclick="editLienBl('+p.id+')">➕ Joindre le BL</span>';
+    var nomEntreprise = p.company_id ? (histoEntreprisesMap[p.company_id] || null) : null;
     return '<div class="histo-item">'+
       '<div class="histo-top">'+
         '<div class="histo-name">'+esc(p.nom_salarie)+'</div>'+
@@ -1352,6 +1387,7 @@ function renderHistoList() {
       '<div class="histo-meta">'+
         '<span>'+date+'</span>'+
         '<span style="font-family:monospace">'+esc(p.code_salarie)+'</span>'+
+        (nomEntreprise?'<span>🏢 '+esc(nomEntreprise)+'</span>':'')+
         (p.chantier?'<span>🏗️ '+esc(p.chantier)+'</span>':'')+
         (p.bon_livraison?'<span class="histo-bl">BL '+esc(p.bon_livraison)+'</span>':'')+
         (ok ? lienBlHtml : '')+
