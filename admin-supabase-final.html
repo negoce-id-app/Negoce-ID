@@ -3371,12 +3371,17 @@ function renderCompaniesSection() {
     }
     var isMagencia = c.id === "magencia";
     var deleteBtn = isMagencia ? "" : '<button class="btn-tbl danger" onclick="deleteCompany(\''+escJsAttr(c.id)+'\',\''+escJsAttr(c.nom)+'\')" title="Supprimer définitivement">🗑️</button>';
-    var deptSelect = '<select class="filter-select" style="font-size:12px;padding:6px 8px" onchange="updateCompanyDept(\''+escJsAttr(c.id)+'\', this.value)">'+departementOptions(c.departement||"", true)+'</select>';
+    // min-width réduit (au lieu des 190px hérités de .filter-select, pensés
+    // pour les filtres de recherche en haut de page) : "33 - Gironde" tient
+    // largement dans 130px, et ces deux selects dans le tableau étaient la
+    // principale cause du défilement horizontal forcé sur petit écran
+    // (ex. MacBook 13").
+    var deptSelect = '<select class="filter-select" style="font-size:12px;padding:6px 8px;min-width:130px" onchange="updateCompanyDept(\''+escJsAttr(c.id)+'\', this.value)">'+departementOptions(c.departement||"", true)+'</select>';
     var planOptions = '<option value="">— Aucune —</option>' + Object.keys(PLAN_LABELS).map(function(p) {
       var sel = p === c.plan ? " selected" : "";
       return '<option value="'+p+'"'+sel+'>'+esc(PLAN_LABELS[p])+'</option>';
     }).join("");
-    var planSelect = '<select class="filter-select" style="font-size:12px;padding:6px 8px" onchange="updateCompanyPlan(\''+escJsAttr(c.id)+'\', this.value)">'+planOptions+'</select>';
+    var planSelect = '<select class="filter-select" style="font-size:12px;padding:6px 8px;min-width:120px" onchange="updateCompanyPlan(\''+escJsAttr(c.id)+'\', this.value)">'+planOptions+'</select>';
     var siretCell = esc(c.siret||"—")+' <button class="btn-tbl" onclick="editCompanySiret(\''+escJsAttr(c.id)+'\')" title="Modifier le SIRET">✏️</button>';
     return '<tr>'+
       '<td>'+esc(c.nom)+'</td>'+
