@@ -2603,6 +2603,16 @@ tr:hover td{background:#FAFBFF}
         <select class="filter-select" id="filterSalarie" onchange="renderAll()">
           <option value="all">Isoler un salarié — tous</option>
         </select>
+        <select class="filter-select" id="filterChantier" onchange="renderAll()">
+          <option value="all">Isoler un chantier — tous</option>
+        </select>
+      </div>
+      <div class="filter-row">
+        <input class="filter-select" type="date" id="filterDateDebut" style="min-width:150px">
+        <span style="color:var(--muted);font-size:13px;align-self:center">→</span>
+        <input class="filter-select" type="date" id="filterDateFin" style="min-width:150px">
+        <button class="btn-action btn-outline" onclick="loadPassages()">🔍 Rechercher sur la période</button>
+        <button class="btn-action btn-outline" onclick="reinitialiserPeriodePassages()">✕ Réinitialiser</button>
       </div>
       <div class="table-scroll"><table>
         <thead><tr><th>Date / Heure</th><th>Code</th><th>Salarié</th><th>Agence</th><th>Chantier</th><th>Document</th><th>Résultat</th></tr></thead>
@@ -4040,13 +4050,40 @@ async function loadData() {
     console.error("loadData salaries error", e);
     salaries = [];
   }
+  await loadPassages();
+}
+
+// ── Chargement des passages, avec recherche par période ──
+// Utile pour les rapprochements (par chantier) et en cas de litige avec
+// un salarié (retrouver un BL sur une plage de dates précise). Sans
+// période renseignée : comportement habituel, les 50 derniers passages.
+// Dès qu'une date est renseignée : aucune limite de nombre, pour ne pas
+// risquer de manquer un passage recherché.
+async function loadPassages() {
+  if (!currentCompany) return;
+  var debutEl = document.getElementById("filterDateDebut");
+  var finEl = document.getElementById("filterDateFin");
+  var debut = debutEl ? debutEl.value : "";
+  var fin = finEl ? finEl.value : "";
   try {
-    var { data: pdata, error: perr } = await supabase.from('passages').select('*').eq('company_id', currentCompany.id).order('created_at', {ascending:false}).limit(50);
+    var query = supabase.from('passages').select('*').eq('company_id', currentCompany.id).order('created_at', {ascending:false});
+    if (debut) query = query.gte('created_at', debut + 'T00:00:00');
+    if (fin) query = query.lte('created_at', fin + 'T23:59:59');
+    if (!debut && !fin) query = query.limit(50);
+    var { data: pdata, error: perr } = await query;
     if (perr) throw perr;
     passages = Array.isArray(pdata) ? pdata : [];
   } catch(e) { passages = []; }
   populatePassageFilters();
   renderAll();
+}
+
+function reinitialiserPeriodePassages() {
+  var debutEl = document.getElementById("filterDateDebut");
+  var finEl = document.getElementById("filterDateFin");
+  if (debutEl) debutEl.value = "";
+  if (finEl) finEl.value = "";
+  loadPassages();
 }
 
 // ── FILTRE HISTORIQUE (isoler un salarié) + vérification des BL ──
@@ -4065,13 +4102,30 @@ function populatePassageFilters() {
       return '<option value="'+c+'">'+esc+' ('+c+')</option>';
     }).join("");
   salarieSel.value = (codes.indexOf(prevSalarie) !== -1) ? prevSalarie : "all";
+
+  // Isoler un chantier — utile pour les rapprochements.
+  var chantierSel = document.getElementById("filterChantier");
+  if (chantierSel) {
+    var chantiers = Array.from(new Set(passages.map(function(p){return p.chantier;}).filter(Boolean)))
+      .sort(function(a,b){ return a.localeCompare(b, 'fr'); });
+    var prevChantier = chantierSel.value || "all";
+    chantierSel.innerHTML = '<option value="all">Isoler un chantier — tous</option>' +
+      chantiers.map(function(c){
+        return '<option value="'+esc(c)+'">'+esc(c)+'</option>';
+      }).join("");
+    chantierSel.value = (chantiers.indexOf(prevChantier) !== -1) ? prevChantier : "all";
+  }
 }
 
 function getFilteredPassages() {
   var salarieSel = document.getElementById("filterSalarie");
   var salarie = salarieSel ? salarieSel.value : "all";
-  if (salarie === "all") return passages;
-  return passages.filter(function(p) { return p.code_salarie === salarie; });
+  var chantierSel = document.getElementById("filterChantier");
+  var chantier = chantierSel ? chantierSel.value : "all";
+  var result = passages;
+  if (salarie !== "all") result = result.filter(function(p) { return p.code_salarie === salarie; });
+  if (chantier !== "all") result = result.filter(function(p) { return p.chantier === chantier; });
+  return result;
 }
 
 function renderAll() {
