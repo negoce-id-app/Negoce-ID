@@ -2687,8 +2687,8 @@ tr:hover td{background:#FAFBFF}
         <select class="filter-select" id="negociantDeptFilter" style="max-width:220px" onchange="renderNegociantsSection()"></select>
       </div>
       <div class="table-scroll"><table>
-        <thead><tr><th>Logo</th><th>Agence</th><th>Département</th><th>Email</th><th>Lien de connexion</th><th>Action</th></tr></thead>
-        <tbody id="negociantsBody"><tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">⏳ Chargement...</td></tr></tbody>
+        <thead><tr><th>Logo</th><th>Agence</th><th>SIRET / nom officiel</th><th>Département</th><th>Email</th><th>Lien de connexion</th><th>Action</th></tr></thead>
+        <tbody id="negociantsBody"><tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">⏳ Chargement...</td></tr></tbody>
       </table></div>
     </div>
   </div>
@@ -3124,7 +3124,7 @@ async function loadNegociants() {
     renderNegociantsSection();
   } catch(e) {
     console.error("loadNegociants error", e);
-    body.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px">⚠️ Erreur de chargement</td></tr>';
+    body.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">⚠️ Erreur de chargement</td></tr>';
   }
 }
 
@@ -3137,7 +3137,7 @@ function renderNegociantsSection() {
     deptEl.dataset.filled = "1";
   }
   if (NEGOCIANTS.length === 0) {
-    body.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px">Aucune agence négociant — cliquez sur "+ Nouvelle agence"</td></tr>';
+    body.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">Aucune agence négociant — cliquez sur "+ Nouvelle agence"</td></tr>';
     return;
   }
   var searchEl = document.getElementById("negociantSearch");
@@ -3150,7 +3150,7 @@ function renderNegociantsSection() {
       || (n.email||"").toLowerCase().indexOf(q) !== -1;
   });
   if (list.length === 0) {
-    body.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px">Aucune agence trouvée</td></tr>';
+    body.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">Aucune agence trouvée</td></tr>';
     return;
   }
   try {
@@ -3171,6 +3171,24 @@ function renderNegociantsSection() {
         : statut === "refuse"
         ? '<button class="btn-tbl" onclick="setNegociantStatut(\''+uid+'\',\'actif\',\''+escJsAttr(n.agence)+'\')">🟢 Réactiver</button> '
         : '';
+      // Anti-usurpation : un SIRET est une info publique, n'importe qui
+      // peut le saisir en prétendant être une vraie agence. On affiche
+      // donc le nom officiellement enregistré au registre à côté du nom
+      // saisi par le prospect (et on l'alerte visuellement si les deux
+      // ne se ressemblent pas), pour repérer une incohérence avant
+      // d'activer. raison_sociale_siret est vide pour les négociants
+      // inscrits avant cette mise à jour — rien d'anormal dans ce cas.
+      var raisonSociale = n.raison_sociale_siret || null;
+      var normalise = function(s){ return String(s||"").toUpperCase().replace(/[^A-Z0-9]/g, ""); };
+      var possibleMismatch = raisonSociale
+        && normalise(raisonSociale).indexOf(normalise(n.agence).slice(0, 6)) === -1
+        && normalise(n.agence).indexOf(normalise(raisonSociale).slice(0, 6)) === -1;
+      var siretCell = n.siret
+        ? '<div style="font-family:monospace;font-size:10.5px;color:var(--muted)">'+esc(n.siret)+'</div>'
+          + (raisonSociale
+              ? '<div style="font-size:10.5px;'+(possibleMismatch?'color:var(--red);font-weight:700':'color:var(--muted)')+'">'+(possibleMismatch?'⚠️ ':'')+esc(raisonSociale)+'</div>'
+              : '<div style="font-size:10px;color:var(--muted);font-style:italic">nom officiel non disponible</div>')
+        : '<span style="color:var(--muted);font-size:11px">—</span>';
       return '<tr>'+
         '<td>'+
           logoCell+
@@ -3178,6 +3196,7 @@ function renderNegociantsSection() {
           '<button class="btn-tbl" style="margin-top:4px" onclick="document.getElementById(\'negLogoFile_'+esc(n.auth_user_id)+'\').click()">'+(n.logo_url?"✏️ Changer":"➕ Logo")+'</button>'+
         '</td>'+
         '<td>'+esc(n.agence)+' '+statutPill+'</td>'+
+        '<td>'+siretCell+'</td>'+
         '<td>'+esc(n.departement||"—")+'</td>'+
         '<td>'+esc(n.email||"—")+'</td>'+
         '<td><code style="font-size:10px;word-break:break-all">'+esc(link)+'</code></td>'+
