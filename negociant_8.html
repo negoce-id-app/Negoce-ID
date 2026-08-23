@@ -457,6 +457,16 @@ body{font-family:'Inter',sans-serif;background:var(--bg);display:flex;flex-direc
           <select id="filtreChantierHisto" onchange="renderHistoList()" class="filtre-select">
             <option value="">Tous les chantiers</option>
           </select>
+          <select id="filtreStatutHisto" onchange="renderHistoList()" class="filtre-select">
+            <option value="">Tous les statuts</option>
+            <option value="AUTORISE">✅ Autorisé</option>
+            <option value="REFUSE">⛔ Refusé</option>
+          </select>
+          <select id="filtreBlHisto" onchange="renderHistoList()" class="filtre-select">
+            <option value="">BL — tous</option>
+            <option value="AVEC">📎 Avec BL</option>
+            <option value="SANS">⚠️ Sans BL</option>
+          </select>
         </div>
       </div>
     </div>
@@ -1331,6 +1341,8 @@ function reinitialiserPeriodeHisto() {
   document.getElementById("filtreDateFin").value = "";
   document.getElementById("filtreEntrepriseHisto").value = "";
   document.getElementById("filtreChantierHisto").value = "";
+  document.getElementById("filtreStatutHisto").value = "";
+  document.getElementById("filtreBlHisto").value = "";
   loadHistorique();
 }
 
@@ -1396,9 +1408,14 @@ async function loadHistorique() {
 function renderHistoList() {
   var filtreChantier = document.getElementById("filtreChantierHisto").value;
   var filtreEntreprise = document.getElementById("filtreEntrepriseHisto").value;
+  var filtreStatut = document.getElementById("filtreStatutHisto").value;
+  var filtreBl = document.getElementById("filtreBlHisto").value;
   var passages = histoPassagesAll;
   if (filtreChantier) passages = passages.filter(function(p){ return p.chantier === filtreChantier; });
   if (filtreEntreprise) passages = passages.filter(function(p){ return p.company_id === filtreEntreprise; });
+  if (filtreStatut) passages = passages.filter(function(p){ return p.resultat === filtreStatut; });
+  if (filtreBl === "AVEC") passages = passages.filter(function(p){ return !!p.lien_bl; });
+  if (filtreBl === "SANS") passages = passages.filter(function(p){ return !p.lien_bl; });
 
   document.getElementById("kpiTotal").textContent = passages.length;
   document.getElementById("kpiOk").textContent = passages.filter(function(p){return p.resultat==="AUTORISE";}).length;
