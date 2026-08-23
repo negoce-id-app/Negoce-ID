@@ -84,7 +84,7 @@ img,svg{display:block}
 
 /* ===== STATS BAR ===== */
 .stats-bar{background:var(--navy);padding:0}
-.stats-row2{display:grid;grid-template-columns:repeat(5,1fr);gap:0}
+.stats-row2{display:grid;grid-template-columns:repeat(4,1fr);gap:0}
 .sb-item{display:flex;align-items:center;gap:12px;padding:26px 20px;border-right:1px solid rgba(255,255,255,0.08)}
 .sb-item:last-child{border-right:none}
 .sb-icon{width:34px;height:34px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
@@ -194,6 +194,7 @@ footer{background:var(--navy);color:#9BA6BE;padding:44px 0 26px}
       <a href="#tarifs">Tarifs</a>
     </div>
     <div class="nav-cta">
+      <a class="nav-login" href="inscription-negociant.html">Vous êtes négociant ?</a>
       <a class="nav-login" href="admin-supabase-final.html">Connexion</a>
       <a class="btn btn-orange" href="inscription.html">Créer mon compte</a>
     </div>
@@ -247,10 +248,6 @@ footer{background:var(--navy);color:#9BA6BE;padding:44px 0 26px}
         <span class="sb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="2"><path d="M7 18 a4.5 4.5 0 0 1 -1-8.9 5.5 5.5 0 0 1 10.7-2 4 4 0 0 1 1.3 7.9" stroke-linejoin="round"/></svg></span>
         <div><div class="sb-title">DONNÉES HÉBERGÉES</div><div class="sb-sub">en Europe</div></div>
       </div>
-      <div class="sb-item">
-        <span class="sb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="2"><circle cx="9" cy="9" r="3"/><circle cx="17" cy="10" r="2.4"/><path d="M4 19 c0-3 2.5-5 5-5 s5 2 5 5" stroke-linecap="round"/><path d="M15 14.5 c2.2 0 4 1.7 4 4.5" stroke-linecap="round"/></svg></span>
-        <div><div class="sb-title">SOLUTION ADOPTÉE</div><div class="sb-sub">par les acteurs du négoce</div></div>
-      </div>
     </div>
   </div>
 </div>
@@ -262,6 +259,7 @@ footer{background:var(--navy);color:#9BA6BE;padding:44px 0 26px}
       <div>
         <div class="eyebrow">Comment ça marche ?</div>
         <h2 class="h2" style="font-size:24px">Un contrôle simple, rapide et sécurisé en 4 étapes.</h2>
+        <p class="lead" style="margin-top:14px">3 façons de vérifier l'autorisation : QR code, saisie manuelle (identifiant, email ou téléphone), et un code de confirmation partagé entre le négociant et le salarié pour une double vérification anti-fraude.</p>
       </div>
       <div class="steps-row">
         <div class="step-item">
@@ -351,7 +349,7 @@ footer{background:var(--navy);color:#9BA6BE;padding:44px 0 26px}
         <a class="btn btn-outline" href="inscription.html">Créer mon compte</a>
       </div>
       <div class="price-card featured">
-        <div class="price-badge">Le plus choisi</div>
+        <div class="price-badge">Recommandé</div>
         <div class="price-kind">Petite entreprise</div>
         <div class="price-amount">39€<span>HT / mois</span></div>
         <div class="price-cap">Jusqu'à 10 utilisateurs</div>
@@ -376,7 +374,7 @@ footer{background:var(--navy);color:#9BA6BE;padding:44px 0 26px}
       <div>🔒 Stockage sécurisé</div>
       <div>🇫🇷 Support français</div>
       <div>✅ Sans engagement</div>
-      <div>⚡ Activation en 24h</div>
+      <div>⚡ Activation immédiate</div>
     </div>
     <div style="margin-top:40px">
       <div class="signup-banner">
@@ -404,8 +402,6 @@ footer{background:var(--navy);color:#9BA6BE;padding:44px 0 26px}
         <div><svg viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="2.5"><path d="M12 2 4 5 v6 c0 5 3.5 8.5 8 10 4.5-1.5 8-5 8-10 V5 z"/><path d="M8.5 12 l2.5 2.5 4.5-5" stroke-linecap="round" stroke-linejoin="round"/></svg>SÉCURISER</div>
       </div>
       <div class="foot-social">
-        <a href="#"><svg viewBox="0 0 24 24" fill="#fff"><path d="M4.98 3.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zM3 9h4v12H3zM9 9h3.8v1.7h.05c.53-1 1.83-2.05 3.77-2.05C20.9 8.65 22 11 22 14.2V21h-4v-6.1c0-1.45-.03-3.3-2.02-3.3-2.02 0-2.33 1.58-2.33 3.2V21H9z"/></svg></a>
-        <a href="#"><svg viewBox="0 0 24 24" fill="#fff"><path d="M13.5 21v-7.5H16l.4-3H13.5V8.4c0-.87.24-1.46 1.49-1.46H16.5V4.34C16.2 4.3 15.2 4.2 14 4.2c-2.4 0-4 1.46-4 4.15V10.5H7.5v3H10V21z"/></svg></a>
         <a href="mailto:contact@negoce-id.fr"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></a>
       </div>
     </div>
