@@ -152,7 +152,16 @@ body{font-family:'Inter',sans-serif;background:var(--bg);display:flex;flex-direc
 .dmn-reponse strong{display:block;font-size:9px;text-transform:uppercase;letter-spacing:0.6px;color:var(--green);margin-bottom:3px;font-weight:800}
 
 /* ÉCRAN LARGE (ordinateur / tablette) */
-.histo-filtres{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+/* Carte de filtres séparée de la carte de résultats : période sur sa
+   propre ligne (elle a le plus d'éléments), entreprise/chantier sur une
+   deuxième ligne — chaque ligne s'enroule (flex-wrap) indépendamment,
+   ce qui évite qu'un champ isolé retombe seul à la ligne. */
+.histo-filtres{display:flex;flex-direction:column;gap:12px}
+.filtre-periode-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.filtre-select-row{display:flex;gap:8px;flex-wrap:wrap}
+.filtre-input{flex:1;min-width:130px;padding:10px 11px;border:2px solid var(--border);border-radius:10px;font-size:13.5px;color:var(--navy)}
+.filtre-btn{flex:1;min-width:150px}
+.filtre-select{flex:1;min-width:170px;padding:10px 12px;border:2px solid var(--border);border-radius:10px;font-size:13.5px;color:var(--navy);background:var(--white)}
 @media (min-width:900px){
   html,body{overflow:auto}
   body{max-width:1000px}
@@ -162,16 +171,16 @@ body{font-family:'Inter',sans-serif;background:var(--bg);display:flex;flex-direc
   .cam-wrap{height:360px}
   #resultSection{max-width:620px;margin:0 auto;width:100%}
   #sHistorique > div{max-width:700px;margin:0 auto;width:100%}
+  /* Informations légèrement agrandies dès l'écran large. */
+  .filtre-input,.filtre-select{font-size:14.5px;padding:12px 14px}
+  .filtre-btn{font-size:13.5px;padding:12px 16px}
 }
 /* Sur les très grands écrans (poste de comptoir / bureau), l'app ne doit
    pas rester coincée dans une colonne étroite avec beaucoup d'espace
-   perdu de chaque côté : on élargit progressivement, et les filtres de
-   l'historique passent sur une seule ligne au lieu de s'empiler. */
+   perdu de chaque côté. */
 @media (min-width:1300px){
   body{max-width:1320px}
   #sHistorique > div{max-width:1100px}
-  .histo-filtres{flex-direction:row;flex-wrap:wrap;align-items:flex-start;margin-bottom:16px}
-  .histo-filtres > *{flex:1;min-width:200px;margin-bottom:0!important}
 }
 </style>
 </head>
@@ -417,26 +426,29 @@ body{font-family:'Inter',sans-serif;background:var(--bg);display:flex;flex-direc
       <div class="kpi-mini"><div class="kpi-mini-val" id="kpiKo" style="color:var(--red)">0</div><div class="kpi-mini-lbl">Refusés</div></div>
     </div>
     <div class="histo-card">
+      <div class="histo-title" style="margin-bottom:14px">🔍 Filtrer les passages</div>
+      <div class="histo-filtres">
+        <div class="filtre-periode-row">
+          <input type="date" id="filtreDateDebut" class="filtre-input">
+          <span style="color:var(--muted);font-size:13px">→</span>
+          <input type="date" id="filtreDateFin" class="filtre-input">
+          <button class="btn-refresh filtre-btn" onclick="loadHistorique()">🔍 Rechercher sur la période</button>
+          <button class="btn-refresh filtre-btn" onclick="reinitialiserPeriodeHisto()">✕ Tout afficher</button>
+        </div>
+        <div class="filtre-select-row">
+          <select id="filtreEntrepriseHisto" onchange="onFiltreEntrepriseHistoChange()" class="filtre-select">
+            <option value="">Toutes les entreprises</option>
+          </select>
+          <select id="filtreChantierHisto" onchange="renderHistoList()" class="filtre-select">
+            <option value="">Tous les chantiers</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="histo-card">
       <div class="histo-title">
         Passages de mon agence
         <button class="btn-refresh" onclick="loadHistorique()">↻</button>
-      </div>
-      <div class="histo-filtres">
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-          <input type="date" id="filtreDateDebut" style="flex:1;min-width:130px;padding:9px 10px;border:2px solid var(--border);border-radius:10px;font-size:13px;color:var(--navy)">
-          <span style="color:var(--muted);font-size:12px">→</span>
-          <input type="date" id="filtreDateFin" style="flex:1;min-width:130px;padding:9px 10px;border:2px solid var(--border);border-radius:10px;font-size:13px;color:var(--navy)">
-        </div>
-        <div style="display:flex;gap:8px">
-          <button class="btn-refresh" style="flex:1" onclick="loadHistorique()">🔍 Rechercher sur la période</button>
-          <button class="btn-refresh" onclick="reinitialiserPeriodeHisto()">✕ Tout afficher</button>
-        </div>
-        <select id="filtreEntrepriseHisto" onchange="onFiltreEntrepriseHistoChange()" style="width:100%;padding:9px 12px;border:2px solid var(--border);border-radius:10px;font-size:13px;color:var(--navy);background:var(--white)">
-          <option value="">Toutes les entreprises</option>
-        </select>
-        <select id="filtreChantierHisto" onchange="renderHistoList()" style="width:100%;padding:9px 12px;border:2px solid var(--border);border-radius:10px;font-size:13px;color:var(--navy);background:var(--white)">
-          <option value="">Tous les chantiers</option>
-        </select>
       </div>
       <div id="blManquantBanner" style="display:none;background:var(--orange-soft);color:var(--orange-dark);border-radius:12px;padding:10px 12px;font-size:12.5px;font-weight:700;margin-bottom:12px"></div>
       <div id="histoList"><div style="text-align:center;padding:24px;color:var(--muted)">⏳ Chargement...</div></div>
