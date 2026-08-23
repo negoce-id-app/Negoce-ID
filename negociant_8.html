@@ -132,6 +132,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);display:flex;flex-direc
    query min-width:900px) avec exactement les mêmes largeurs de colonnes
    que cet en-tête, pour un alignement parfait. */
 .histo-header{display:none}
+.histo-result-desktop{display:none}
 .btn-refresh{background:transparent;border:1.5px solid var(--border);padding:4px 10px;border-radius:8px;font-size:11px;font-weight:700;color:var(--muted);cursor:pointer}
 .kpi-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:0}
 .kpi-mini{background:var(--white);border-radius:14px;padding:12px;box-shadow:var(--shadow);text-align:center}
@@ -182,11 +183,18 @@ body{font-family:'Inter',sans-serif;background:var(--bg);display:flex;flex-direc
      avec les KPI juste au-dessus (Passages / Autorisés / Refusés). */
   .filtre-input,.filtre-select{font-size:14.5px;padding:12px 14px}
   .filtre-btn{font-size:13.5px;padding:12px 16px}
-  .histo-meta,.histo-header{display:grid;grid-template-columns:145px 105px 1fr 1fr 1.6fr;column-gap:34px;align-items:center}
+  .histo-meta,.histo-header{display:grid;grid-template-columns:145px 105px 1fr 1fr 1.3fr 110px;column-gap:34px;align-items:center}
   .histo-meta{font-size:12px;row-gap:6px}
   .histo-item{padding:14px 0}
   .histo-name{font-size:14px}
-  .histo-header{display:grid;padding:0 0 10px;margin-bottom:2px;border-bottom:2px solid var(--border);font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px}
+  .histo-header{display:grid;padding:0 0 10px;margin-bottom:2px;border-bottom:2px solid var(--border);font-size:13px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:0.6px}
+  /* Le statut (badge Autorisé/Refusé) passe de l'angle en haut à droite
+     de la carte (histo-top, pratique en mobile en une ligne courte) à sa
+     propre colonne alignée sous l'intitulé "Statut" — deux rendus du même
+     badge existent dans le HTML, un seul est visible selon la largeur
+     d'écran plutôt que de déplacer l'élément en JS. */
+  .histo-result-mobile{display:none}
+  .histo-result-desktop{display:block}
   .kpi-row{gap:14px}
   .kpi-mini{padding:18px}
   .kpi-mini-val{font-size:30px}
@@ -494,6 +502,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);display:flex;flex-direc
         <span>Entreprise</span>
         <span>Chantier</span>
         <span>BL</span>
+        <span>Statut</span>
       </div>
       <div id="histoList"><div style="text-align:center;padding:24px;color:var(--muted)">⏳ Chargement...</div></div>
       <input type="file" id="histoBlFileInput" accept="image/*,application/pdf" capture="environment" style="display:none" onchange="onHistoBlFileChosen(this)">
@@ -1480,10 +1489,11 @@ function renderHistoList() {
         +(blAjouteLe ? '<span class="histo-bl" style="opacity:0.65;font-weight:600">(ajouté le '+blAjouteLe+')</span>' : '')
       : '<span class="histo-bl" style="cursor:pointer;opacity:0.7" onclick="editLienBl('+p.id+')">➕ Joindre le BL</span>';
     var nomEntreprise = p.company_id ? (histoEntreprisesMap[p.company_id] || null) : null;
+    var resultBadge = '<div class="histo-result '+(ok?"ok":"ko")+'">'+(ok?"✅ Autorisé":"🚫 Refusé")+'</div>';
     return '<div class="histo-item">'+
       '<div class="histo-top">'+
         '<div class="histo-name">'+esc(p.nom_salarie)+'</div>'+
-        '<div class="histo-result '+(ok?"ok":"ko")+'">'+(ok?"✅ Autorisé":"🚫 Refusé")+'</div>'+
+        '<div class="histo-result-mobile">'+resultBadge+'</div>'+
       '</div>'+
       '<div class="histo-meta">'+
         '<span>'+date+'</span>'+
@@ -1491,6 +1501,7 @@ function renderHistoList() {
         '<span>'+(nomEntreprise?'🏢 '+esc(nomEntreprise):'—')+'</span>'+
         '<span>'+(p.chantier?'🏗️ '+esc(p.chantier):'—')+'</span>'+
         '<span>'+(p.bon_livraison?'<span class="histo-bl">BL '+esc(p.bon_livraison)+'</span> ':'')+(ok ? lienBlHtml : '—')+'</span>'+
+        '<span class="histo-result-desktop">'+resultBadge+'</span>'+
       '</div>'+
     '</div>';
   }).join("");
