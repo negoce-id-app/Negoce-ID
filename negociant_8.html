@@ -410,6 +410,15 @@ body{font-family:'Inter',sans-serif;background:var(--bg);display:flex;flex-direc
         Passages de mon agence
         <button class="btn-refresh" onclick="loadHistorique()">↻</button>
       </div>
+      <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;align-items:center">
+        <input type="date" id="filtreDateDebut" style="flex:1;min-width:130px;padding:9px 10px;border:2px solid var(--border);border-radius:10px;font-size:13px;color:var(--navy)">
+        <span style="color:var(--muted);font-size:12px">→</span>
+        <input type="date" id="filtreDateFin" style="flex:1;min-width:130px;padding:9px 10px;border:2px solid var(--border);border-radius:10px;font-size:13px;color:var(--navy)">
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <button class="btn-refresh" style="flex:1" onclick="loadHistorique()">🔍 Rechercher sur la période</button>
+        <button class="btn-refresh" onclick="reinitialiserPeriodeHisto()">✕ Tout afficher</button>
+      </div>
       <select id="filtreChantierHisto" onchange="renderHistoList()" style="width:100%;padding:9px 12px;border:2px solid var(--border);border-radius:10px;font-size:13px;color:var(--navy);background:var(--white);margin-bottom:12px">
         <option value="">Tous les chantiers</option>
       </select>
@@ -1241,18 +1250,32 @@ async function saveBL() {
 // renderHistoList() pour filtrer par chantier sans refaire de requête.
 var histoPassagesAll = [];
 
+function reinitialiserPeriodeHisto() {
+  document.getElementById("filtreDateDebut").value = "";
+  document.getElementById("filtreDateFin").value = "";
+  loadHistorique();
+}
+
 async function loadHistorique() {
   document.getElementById("histoList").innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted)">⏳ Chargement...</div>';
   try {
-    var { data, error } = await supabase
+    // Recherche par période : utile en cas de litige avec un salarié, pour
+    // retrouver les BL sur une plage de dates précise plutôt que de se
+    // limiter aux passages les plus récents. Si une date est renseignée,
+    // aucune limite de nombre n'est appliquée (la complétude prime sur la
+    // rapidité pour ce cas d'usage) ; sinon, comportement habituel :
+    // les 500 derniers passages tous chantiers confondus.
+    var debut = document.getElementById("filtreDateDebut").value;
+    var fin = document.getElementById("filtreDateFin").value;
+    var query = supabase
       .from('passages')
       .select('*')
       .eq('agence', currentNego)
-      .order('created_at', { ascending: false })
-      // 500 (au lieu de 50) : pour que le rapprochement mensuel par
-      // chantier ne perde pas de passages plus anciens que les 50
-      // derniers de l'agence tous chantiers confondus.
-      .limit(500);
+      .order('created_at', { ascending: false });
+    if (debut) query = query.gte('created_at', debut + 'T00:00:00');
+    if (fin) query = query.lte('created_at', fin + 'T23:59:59');
+    if (!debut && !fin) query = query.limit(500);
+    var { data, error } = await query;
     if (error) throw error;
     histoPassagesAll = Array.isArray(data) ? data : [];
 
