@@ -2601,10 +2601,10 @@ tr:hover td{background:#FAFBFF}
       </div>
       <div class="filter-row">
         <select class="filter-select" id="filterSalarie" onchange="renderAll()">
-          <option value="all">Isoler un salarié — tous</option>
+          <option value="all">Recherche par salarié — tous</option>
         </select>
         <select class="filter-select" id="filterChantier" onchange="renderAll()">
-          <option value="all">Isoler un chantier — tous</option>
+          <option value="all">Recherche par chantier — tous</option>
         </select>
       </div>
       <div class="filter-row">
@@ -4096,7 +4096,7 @@ function populatePassageFilters() {
   });
   var codes = Object.keys(namesMap).sort(function(a,b){ return String(namesMap[a]).localeCompare(String(namesMap[b])); });
   var prevSalarie = salarieSel.value || "all";
-  salarieSel.innerHTML = '<option value="all">Isoler un salarié — tous</option>' +
+  salarieSel.innerHTML = '<option value="all">Recherche par salarié — tous</option>' +
     codes.map(function(c){
       var esc = String(namesMap[c]).replace(/&/g,"&amp;").replace(/</g,"&lt;");
       return '<option value="'+c+'">'+esc+' ('+c+')</option>';
@@ -4109,7 +4109,7 @@ function populatePassageFilters() {
     var chantiers = Array.from(new Set(passages.map(function(p){return p.chantier;}).filter(Boolean)))
       .sort(function(a,b){ return a.localeCompare(b, 'fr'); });
     var prevChantier = chantierSel.value || "all";
-    chantierSel.innerHTML = '<option value="all">Isoler un chantier — tous</option>' +
+    chantierSel.innerHTML = '<option value="all">Recherche par chantier — tous</option>' +
       chantiers.map(function(c){
         return '<option value="'+esc(c)+'">'+esc(c)+'</option>';
       }).join("");
