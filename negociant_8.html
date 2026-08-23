@@ -419,7 +419,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);display:flex;flex-direc
         <button class="btn-refresh" style="flex:1" onclick="loadHistorique()">🔍 Rechercher sur la période</button>
         <button class="btn-refresh" onclick="reinitialiserPeriodeHisto()">✕ Tout afficher</button>
       </div>
-      <select id="filtreEntrepriseHisto" onchange="renderHistoList()" style="width:100%;padding:9px 12px;border:2px solid var(--border);border-radius:10px;font-size:13px;color:var(--navy);background:var(--white);margin-bottom:8px">
+      <select id="filtreEntrepriseHisto" onchange="onFiltreEntrepriseHistoChange()" style="width:100%;padding:9px 12px;border:2px solid var(--border);border-radius:10px;font-size:13px;color:var(--navy);background:var(--white);margin-bottom:8px">
         <option value="">Toutes les entreprises</option>
       </select>
       <select id="filtreChantierHisto" onchange="renderHistoList()" style="width:100%;padding:9px 12px;border:2px solid var(--border);border-radius:10px;font-size:13px;color:var(--navy);background:var(--white);margin-bottom:12px">
@@ -1258,6 +1258,31 @@ async function saveBL() {
 var histoPassagesAll = [];
 var histoEntreprisesMap = {};
 
+// Recalcule les options du filtre chantier à partir des passages de
+// l'entreprise actuellement sélectionnée (ou de toutes si "Toutes les
+// entreprises"), pour que le menu ne propose jamais un chantier hors
+// périmètre de l'entreprise choisie. Conserve la sélection en cours si
+// elle reste valide, sinon revient à "Tous les chantiers".
+function updateChantierOptionsHisto() {
+  var filtreEntSel = document.getElementById("filtreEntrepriseHisto");
+  var entreprise = filtreEntSel ? filtreEntSel.value : "";
+  var base = entreprise
+    ? histoPassagesAll.filter(function(p){ return p.company_id === entreprise; })
+    : histoPassagesAll;
+  var chantiers = Array.from(new Set(base.map(function(p){return p.chantier;}).filter(Boolean)))
+    .sort(function(a,b){return a.localeCompare(b, 'fr');});
+  var filtreSel = document.getElementById("filtreChantierHisto");
+  var currentVal = filtreSel.value;
+  filtreSel.innerHTML = '<option value="">Tous les chantiers</option>'
+    + chantiers.map(function(c){return '<option value="'+esc(c)+'">'+esc(c)+'</option>';}).join("");
+  filtreSel.value = (chantiers.indexOf(currentVal) !== -1) ? currentVal : "";
+}
+
+function onFiltreEntrepriseHistoChange() {
+  updateChantierOptionsHisto();
+  renderHistoList();
+}
+
 function reinitialiserPeriodeHisto() {
   document.getElementById("filtreDateDebut").value = "";
   document.getElementById("filtreDateFin").value = "";
@@ -1299,19 +1324,9 @@ async function loadHistorique() {
       histoEntreprisesMap = {};
     }
 
-    // Peuple le filtre chantier avec les valeurs distinctes présentes,
-    // en conservant la sélection en cours si elle existe toujours.
-    var chantiers = Array.from(new Set(histoPassagesAll.map(function(p){return p.chantier;}).filter(Boolean)))
-      .sort(function(a,b){return a.localeCompare(b, 'fr');});
-    var filtreSel = document.getElementById("filtreChantierHisto");
-    var currentVal = filtreSel.value;
-    filtreSel.innerHTML = '<option value="">Tous les chantiers</option>'
-      + chantiers.map(function(c){return '<option value="'+esc(c)+'">'+esc(c)+'</option>';}).join("");
-    if (chantiers.indexOf(currentVal) !== -1) filtreSel.value = currentVal;
-
     // Peuple le filtre entreprise avec les company_id distincts présents
     // dans les passages chargés (pas tous ceux renvoyés par la RPC, au
-    // cas où la période/le chantier réduit déjà le résultat).
+    // cas où la période réduit déjà le résultat).
     var entIdsPresents = Array.from(new Set(histoPassagesAll.map(function(p){return p.company_id;}).filter(Boolean)));
     var entOptions = entIdsPresents
       .map(function(id){ return { id: id, nom: histoEntreprisesMap[id] || id }; })
@@ -1321,6 +1336,11 @@ async function loadHistorique() {
     filtreEntSel.innerHTML = '<option value="">Toutes les entreprises</option>'
       + entOptions.map(function(e){return '<option value="'+esc(e.id)+'">'+esc(e.nom)+'</option>';}).join("");
     if (entIdsPresents.indexOf(currentEntVal) !== -1) filtreEntSel.value = currentEntVal;
+
+    // Le filtre chantier est en cascade : ses options dépendent de
+    // l'entreprise actuellement sélectionnée, pour ne jamais proposer un
+    // chantier qui n'appartient pas à cette entreprise.
+    updateChantierOptionsHisto();
 
     renderHistoList();
   } catch(e) {
