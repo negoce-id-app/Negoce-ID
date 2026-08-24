@@ -2328,7 +2328,7 @@ function qrDataUrl(text, cellSize, margin) {
 function barcodeDataUrl(text) {
   try {
     var canvas = document.createElement("canvas");
-    JsBarcode(canvas, String(text), { format: "CODE128", displayValue: false, margin: 6, height: 50, background: "#ffffff", lineColor: "#10203D" });
+    JsBarcode(canvas, String(text), { format: "CODE128", displayValue: false, margin: 6, height: 60, width: 2.2, background: "#ffffff", lineColor: "#10203D" });
     return canvas.toDataURL("image/png");
   } catch (e) {
     console.error("barcodeDataUrl error", e);
@@ -2517,7 +2517,7 @@ textarea.dmd-in{resize:none;min-height:80px}
   <div class="qr-box">
     <div class="qr-lbl">📱 À scanner chez le fournisseur</div>
     <img class="qr-img" id="qrImg" src="" alt="QR Code">
-    <img id="barcodeImg" src="" alt="Code-barres" style="width:100%;max-width:220px;margin-top:12px">
+    <img id="barcodeImg" src="" alt="Code-barres" style="width:100%;max-width:300px;margin-top:12px">
     <div class="qr-tip">Le fournisseur scanne le QR ou le code-barres,<br><strong>selon son lecteur, avec sa tablette au comptoir</strong></div>
   </div>
   <div class="ch-box">
