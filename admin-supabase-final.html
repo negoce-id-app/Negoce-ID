@@ -4410,7 +4410,11 @@ function handleImportFileChosen(input) {
         var typeRaw = get("type").toUpperCase();
         var type = /INTER.?M/.test(typeRaw) ? "INTERIMAIRE" : /EXT|SOUS/.test(typeRaw) ? "EXT" : "INTERNE";
         var statut = get("statut").toUpperCase() === "INACTIF" ? "INACTIF" : "ACTIF";
+        // Colonne "Chantiers" vide dans le fichier = "Tous" par défaut (même
+        // convention que l'ajout manuel), plutôt qu'un tableau vide qui
+        // bloquerait le salarié partout (aucun chantier autorisé).
         var chantiers = get("chantiers").split(",").map(function(c) { return c.trim(); }).filter(Boolean);
+        if (!chantiers.length) chantiers = ["Tous"];
         return {
           ligne: idx + 2, // +2 : ligne 1 = en-têtes, un tableur commence à 1
           nom: get("nom"),
@@ -4524,7 +4528,10 @@ function openAddSalarie() {
   document.getElementById("salTelephone").value = "";
   document.getElementById("salType").value = "INTERNE";
   document.getElementById("salStatut").value = "ACTIF";
-  document.getElementById("salChantiers").value = "";
+  // "Tous" par défaut : reconnu comme "aucune restriction de chantier" par
+  // les apps salarié/négociant (isTousChantiersValue) — évite qu'un salarié
+  // créé sans y penser se retrouve bloqué partout faute de chantier précisé.
+  document.getElementById("salChantiers").value = "Tous";
   document.getElementById("qrPreview").style.display = "none";
   salPhotoData = null;
   document.getElementById("salPhotoInput").value = "";
