@@ -8,6 +8,11 @@
 <!-- SheetJS : lecture du fichier importé (xlsx/xls/csv) et génération du
      modèle téléchargeable — voir openImportSalaries() plus bas. -->
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<!-- JsBarcode : génère un code-barres Code128 en plus du QR, pour les
+     négociants équipés d'une douchette USB qui ne lit que les codes-barres
+     (pas de QR). Librairie statique chargée une fois, aucun appel réseau
+     avec le code du salarié — voir barcodeDataUrl() plus bas. -->
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 <script>
 //---------------------------------------------------------------------
 //
@@ -2321,6 +2326,24 @@ function qrDataUrl(text, cellSize, margin) {
     .replace('fill="black"', 'fill="#10203D"');
   return "data:image/svg+xml;base64," + btoa(svg);
 }
+
+// Génère un code-barres Code128 (même code salarié que le QR, juste une
+// autre façon de l'encoder) pour les négociants dont la douchette USB ne
+// lit que les codes-barres et pas les QR — voir la question de l'utilisateur
+// à l'origine : "beaucoup de fournisseurs n'ont pas de lecteur QR code".
+// Rendu sur un <canvas> hors-écran (JsBarcode ne fournit pas de sortie SVG
+// texte directement exploitable en data URL comme qrDataUrl), puis converti
+// en data URL PNG.
+function barcodeDataUrl(text) {
+  try {
+    var canvas = document.createElement("canvas");
+    JsBarcode(canvas, String(text), { format: "CODE128", displayValue: false, margin: 6, height: 50, background: "#ffffff", lineColor: "#10203D" });
+    return canvas.toDataURL("image/png");
+  } catch (e) {
+    console.error("barcodeDataUrl error", e);
+    return "";
+  }
+}
 </script>
 
 <style>
@@ -2766,6 +2789,8 @@ tr:hover td{background:#FAFBFF}
     <div class="qr-preview" id="qrPreview" style="display:none">
       <img id="qrPreviewImg" src="" alt="QR">
       <p>QR Code du salarié</p>
+      <img id="barcodePreviewImg" src="" alt="Code-barres" style="margin-top:10px;max-width:100%">
+      <p>Code-barres (pour douchette sans lecteur QR)</p>
     </div>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeModal('modalSalarie')">Annuler</button>
@@ -4797,16 +4822,18 @@ async function deleteSalarie(code) {
 function showQR(code) {
   // Le QR encode uniquement le code salarié (lu tel quel côté négociant, caméra ou lecteur USB)
   var qrUrl = qrDataUrl(code, 6);
-  var w = window.open("","_blank","width=300,height=350");
+  var barcodeUrl = barcodeDataUrl(code);
+  var w = window.open("","_blank","width=300,height=450");
   // esc() ici, pas escJsAttr() : "code" est inséré comme contenu texte HTML
   // (pas comme argument JS dans un onclick), donc l'échappement HTML classique
   // suffit à empêcher toute injection de balise (<script>, <img onerror=...>).
-  w.document.write('<html><body style="margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif;background:#F5F6F8;padding:20px"><img src="'+qrUrl+'" style="width:200px;border-radius:12px"><p style="margin-top:12px;font-size:14px;font-weight:700;color:#10203D">'+esc(code)+'</p><button onclick="window.print()" style="margin-top:12px;padding:10px 20px;background:#FF6A1A;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:700">🖨️ Imprimer</button></body></html>');
+  w.document.write('<html><body style="margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif;background:#F5F6F8;padding:20px"><img src="'+qrUrl+'" style="width:200px;border-radius:12px">'+(barcodeUrl ? '<img src="'+barcodeUrl+'" style="width:200px;margin-top:14px;background:#fff;padding:8px;border-radius:8px">' : '')+'<p style="margin-top:12px;font-size:14px;font-weight:700;color:#10203D">'+esc(code)+'</p><button onclick="window.print()" style="margin-top:12px;padding:10px 20px;background:#FF6A1A;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:700">🖨️ Imprimer</button></body></html>');
 }
 
 function showQRInModal(code) {
   var qrUrl = qrDataUrl(code, 4);
   document.getElementById("qrPreviewImg").src = qrUrl;
+  document.getElementById("barcodePreviewImg").src = barcodeDataUrl(code);
   document.getElementById("qrPreview").style.display = "block";
 }
 

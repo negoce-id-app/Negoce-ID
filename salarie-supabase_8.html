@@ -6,6 +6,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>NégoceID — Ma carte</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<!-- JsBarcode : code-barres Code128 en plus du QR, pour les négociants dont
+     la douchette USB ne lit que les codes-barres. Voir barcodeDataUrl(). -->
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 <script>
 //---------------------------------------------------------------------
 //
@@ -2319,6 +2322,19 @@ function qrDataUrl(text, cellSize, margin) {
     .replace('fill="black"', 'fill="#10203D"');
   return "data:image/svg+xml;base64," + btoa(svg);
 }
+
+// Même code que le QR, encodé en Code128 : pour les négociants dont la
+// douchette USB ne lit que les codes-barres (pas de lecteur QR).
+function barcodeDataUrl(text) {
+  try {
+    var canvas = document.createElement("canvas");
+    JsBarcode(canvas, String(text), { format: "CODE128", displayValue: false, margin: 6, height: 50, background: "#ffffff", lineColor: "#10203D" });
+    return canvas.toDataURL("image/png");
+  } catch (e) {
+    console.error("barcodeDataUrl error", e);
+    return "";
+  }
+}
 </script>
 
 <style>
@@ -2501,7 +2517,8 @@ textarea.dmd-in{resize:none;min-height:80px}
   <div class="qr-box">
     <div class="qr-lbl">📱 À scanner chez le fournisseur</div>
     <img class="qr-img" id="qrImg" src="" alt="QR Code">
-    <div class="qr-tip">Le fournisseur scanne ce QR<br><strong>avec sa tablette au comptoir</strong></div>
+    <img id="barcodeImg" src="" alt="Code-barres" style="width:100%;max-width:220px;margin-top:12px">
+    <div class="qr-tip">Le fournisseur scanne le QR ou le code-barres,<br><strong>selon son lecteur, avec sa tablette au comptoir</strong></div>
   </div>
   <div class="ch-box">
     <div class="ch-lbl">🏗️ Chantiers autorisés</div>
@@ -3057,6 +3074,7 @@ function showCarte(user) {
   document.getElementById("chList").innerHTML = ch.map(function(c){return '<span class="ch-pill">🏗️ '+esc(c)+'</span>';}).join("") || '<span style="color:var(--red);font-size:13px">Aucun chantier autorisé</span>';
   // Le QR encode uniquement le code salarié (lu tel quel côté négociant, caméra ou lecteur USB)
   document.getElementById("qrImg").src = qrDataUrl(code, 5);
+  document.getElementById("barcodeImg").src = barcodeDataUrl(code);
 
   document.getElementById("sLogin").classList.add("hidden");
   document.getElementById("tabBar").classList.remove("hidden");
