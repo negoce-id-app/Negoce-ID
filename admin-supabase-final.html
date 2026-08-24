@@ -4774,10 +4774,16 @@ async function toggleStatut(code, currentStatut) {
 
 async function deleteSalarie(code) {
   if (!confirm("⚠️ Supprimer définitivement " + code + " ?\n\nCette action est irréversible.")) return;
+  // On retrouve la photo éventuelle AVANT de supprimer la ligne, pour pouvoir
+  // aussi effacer le fichier du Storage — sinon il reste orphelin indéfiniment
+  // (RGPD : la photo doit disparaître avec la fiche, pas juste la ligne SQL).
+  var existing = (salaries || []).find(function(s) { return s.code === code; });
+  var photoUrl = existing ? existing.photo : null;
   try {
     var { error } = await supabase.from('salaries').delete().eq('code', code);
     if (error) { console.error("deleteSalarie failed", error); alert("❌ Échec de la suppression :\n" + frError(error)); return; }
   } catch(e) { console.error("deleteSalarie error", e); alert("❌ Erreur :\n" + frError(e)); return; }
+  if (photoUrl) deleteStoredSalPhoto(photoUrl);
   loadData();
 }
 
