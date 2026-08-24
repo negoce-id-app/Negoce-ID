@@ -610,6 +610,17 @@ var forgotAgence = null;
 var currentPassageCode = null;
 var currentPassageId = null;
 var scanning = false, stream = null, raf = null;
+// Détection des codes-barres (Code128) à la caméra, en plus du QR (jsQR) :
+// utilise l'API navigateur native BarcodeDetector (aucune librairie externe,
+// supportée sur Chrome/Android et Safari/iOS récents) — si le navigateur ne
+// la supporte pas, barcodeDetector reste null et le scan continue de
+// fonctionner exactement comme avant (QR uniquement à la caméra ; le
+// code-barres reste lisible via la douchette USB ou la saisie manuelle).
+var barcodeDetector = null;
+try {
+  if (typeof BarcodeDetector !== "undefined") barcodeDetector = new BarcodeDetector({ formats: ["code_128"] });
+} catch (e) { console.error("BarcodeDetector indisponible", e); barcodeDetector = null; }
+var barcodeDetectBusy = false;
 
 var companyNames = {"MAG":"MAGENCIA","EXT":"Sous-traitant"};
 
@@ -1659,6 +1670,19 @@ function scanLoop() {
       scanning = false; stopCam();
       showResult(extractCode(qr.data));
       return;
+    }
+    // Pas de QR sur cette image : on tente aussi le code-barres (Code128),
+    // en tâche de fond (async, throttlé par barcodeDetectBusy pour ne pas
+    // empiler les appels), sans bloquer la boucle de détection du QR.
+    if (barcodeDetector && !barcodeDetectBusy && scanning) {
+      barcodeDetectBusy = true;
+      barcodeDetector.detect(c).then(function(codes) {
+        barcodeDetectBusy = false;
+        if (scanning && codes && codes.length && codes[0].rawValue) {
+          scanning = false; stopCam();
+          showResult(extractCode(codes[0].rawValue));
+        }
+      }).catch(function() { barcodeDetectBusy = false; });
     }
   }
   raf = requestAnimationFrame(scanLoop);
