@@ -71,11 +71,13 @@ img,svg{display:block}
 .hero-h1{font-size:44px;line-height:1.08;font-weight:900;letter-spacing:-1px;text-transform:uppercase;color:var(--dark)}
 .hero-h1 .o{color:var(--orange);display:block}
 .hero-sub{color:var(--muted);font-size:16px;margin-top:18px;max-width:440px}
-.hero-icons{display:flex;gap:26px;margin-top:32px;flex-wrap:wrap}
-.hi-item{display:flex;flex-direction:column;align-items:flex-start;gap:10px;max-width:110px}
-.hi-chip{width:46px;height:46px;border-radius:50%;background:var(--orange-soft);display:flex;align-items:center;justify-content:center}
-.hi-chip svg{width:22px;height:22px}
-.hi-label{font-size:12px;font-weight:800;color:var(--dark);line-height:1.25}
+.hero-icons{display:flex;gap:22px;margin-top:32px;flex-wrap:wrap}
+.hi-item{display:flex;flex-direction:column;align-items:flex-start;gap:12px;max-width:150px}
+.hi-chip{width:52px;height:52px;border-radius:50%;background:var(--orange-soft);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.hi-chip svg{width:24px;height:24px}
+.hi-label{font-size:13.5px;font-weight:800;color:var(--dark);line-height:1.25}
+.hi-desc{font-size:12px;color:var(--muted);line-height:1.4;margin-top:2px}
+.hi-item>span:last-child{display:flex;flex-direction:column;gap:2px}
 .hero-ctas{display:flex;gap:14px;margin-top:34px;flex-wrap:wrap}
 .hero-right{position:relative;align-self:stretch;display:flex}
 .hero-photo-wrap{position:relative;width:100%;clip-path:none;min-height:430px}
@@ -119,6 +121,7 @@ img,svg{display:block}
 .aud-card{border-radius:18px;padding:30px;display:flex;flex-direction:column}
 .aud-card.orange{background:var(--orange-soft)}
 .aud-card.white{background:#fff;border:1px solid var(--line)}
+.aud-card.blue{background:#EAF0FA}
 .aud-card.navy{background:var(--navy);color:#fff}
 .aud-head{display:flex;align-items:center;gap:12px;margin-bottom:18px}
 .aud-icon{width:36px;height:36px;flex-shrink:0}
@@ -126,6 +129,7 @@ img,svg{display:block}
 .aud-card ul{list-style:none;margin-bottom:20px;flex:1}
 .aud-card li{display:flex;gap:10px;margin-bottom:12px;font-size:13.5px;color:var(--dark)}
 .aud-card li .tick{color:var(--orange);font-weight:900;flex-shrink:0}
+.aud-card li>span:last-child{flex:1;min-width:0}
 .aud-card .btn{width:100%}
 .qr-card p{font-size:13.5px;color:#C7CEDD;margin-bottom:16px}
 .qr-web{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:700;color:#fff;margin-bottom:20px}
@@ -213,13 +217,13 @@ footer{background:var(--navy);color:#9BA6BE;padding:44px 0 26px}
   <div class="wrap">
     <div class="hero-grid">
       <div class="hero-left">
-        <h1 class="hero-h1">Protégeons ensemble<span class="o">vos entreprises</span><span class="o">et vos chantiers</span></h1>
+        <h1 class="hero-h1">Protégez votre entreprise<span class="o">contre l'usurpation</span><span class="o">d'identité</span></h1>
         <p class="hero-sub">NégoceID sécurise et simplifie le contrôle des retraits de matériaux.</p>
         <div class="hero-icons">
-          <div class="hi-item"><span class="hi-chip"><svg viewBox="0 0 100 100"><path d="M20 40 L80 40 C80 53 77 64 62 75 C56 80 52 84 50 87 C48 84 44 80 38 75 C23 64 20 53 20 40 Z" fill="none" stroke="var(--orange-dark)" stroke-width="7"/></svg></span><span class="hi-label">Sécurité renforcée</span></div>
-          <div class="hi-item"><span class="hi-chip"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="32" fill="none" stroke="var(--orange-dark)" stroke-width="7"/><path d="M50 32 L50 50 L64 58" fill="none" stroke="var(--orange-dark)" stroke-width="7" stroke-linecap="round"/></svg></span><span class="hi-label">Gain de temps</span></div>
-          <div class="hi-item"><span class="hi-chip"><svg viewBox="0 0 100 100"><rect x="18" y="55" width="16" height="27" fill="var(--orange-dark)"/><rect x="42" y="36" width="16" height="46" fill="var(--orange-dark)"/><rect x="66" y="18" width="16" height="64" fill="var(--orange-dark)"/></svg></span><span class="hi-label">Traçabilité complète</span></div>
-          <div class="hi-item"><span class="hi-chip"><svg viewBox="0 0 100 100"><circle cx="34" cy="38" r="15" fill="var(--orange-dark)"/><circle cx="66" cy="38" r="15" fill="var(--orange-dark)"/><rect x="22" y="58" width="56" height="10" rx="5" fill="var(--orange-dark)"/></svg></span><span class="hi-label">Confiance partagée</span></div>
+          <div class="hi-item"><span class="hi-chip"><svg viewBox="0 0 100 100"><path d="M20 40 L80 40 C80 53 77 64 62 75 C56 80 52 84 50 87 C48 84 44 80 38 75 C23 64 20 53 20 40 Z" fill="none" stroke="var(--orange-dark)" stroke-width="7"/></svg></span><span><span class="hi-label">Sécurité renforcée</span><span class="hi-desc">Fini les usurpations et les abus</span></span></div>
+          <div class="hi-item"><span class="hi-chip"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="32" fill="none" stroke="var(--orange-dark)" stroke-width="7"/><path d="M50 32 L50 50 L64 58" fill="none" stroke="var(--orange-dark)" stroke-width="7" stroke-linecap="round"/></svg></span><span><span class="hi-label">Gain de temps</span><span class="hi-desc">Contrôle en 3 secondes au comptoir</span></span></div>
+          <div class="hi-item"><span class="hi-chip"><svg viewBox="0 0 100 100"><rect x="18" y="55" width="16" height="27" fill="var(--orange-dark)"/><rect x="42" y="36" width="16" height="46" fill="var(--orange-dark)"/><rect x="66" y="18" width="16" height="64" fill="var(--orange-dark)"/></svg></span><span><span class="hi-label">Traçabilité complète</span><span class="hi-desc">Historique de tous les retraits</span></span></div>
+          <div class="hi-item"><span class="hi-chip"><svg viewBox="0 0 100 100"><circle cx="34" cy="38" r="15" fill="var(--orange-dark)"/><circle cx="66" cy="38" r="15" fill="var(--orange-dark)"/><rect x="22" y="58" width="56" height="10" rx="5" fill="var(--orange-dark)"/></svg></span><span><span class="hi-label">Confiance partagée</span><span class="hi-desc">Négociants et entreprises protégés</span></span></div>
         </div>
         <div class="hero-ctas">
           <a class="btn btn-orange" href="inscription.html">Demander une démonstration →</a>
@@ -307,29 +311,31 @@ footer{background:var(--navy);color:#9BA6BE;padding:44px 0 26px}
           <div class="aud-title">Pour les négociants / fournisseurs</div>
         </div>
         <ul>
-          <li><span class="tick">✓</span><b>Accès 100% gratuit</b>, sans engagement ni carte bancaire.</li>
-          <li><span class="tick">✓</span><b>Fini les appels au client</b> pour vérifier une autorisation : la réponse s'affiche en 3 secondes, directement au comptoir.</li>
-          <li><span class="tick">✓</span>Vérifiez en temps réel l'autorisation des salariés, sous-traitants et intérimaires.</li>
-          <li><span class="tick">✓</span>Évitez les usurpations et les abus.</li>
-          <li><span class="tick">✓</span>Sécurisez vos ventes et votre responsabilité.</li>
+          <li><span class="tick">✓</span><span><b>Accès 100% gratuit</b>, sans engagement ni carte bancaire.</span></li>
+          <li><span class="tick">✓</span><span><b>Fini les appels au client</b> pour vérifier une autorisation : la réponse s'affiche en 3 secondes, directement au comptoir.</span></li>
+          <li><span class="tick">✓</span><span>Vérifiez en temps réel l'autorisation des salariés, sous-traitants et intérimaires.</span></li>
+          <li><span class="tick">✓</span><span>Évitez les usurpations et les abus.</span></li>
+          <li><span class="tick">✓</span><span>Sécurisez vos ventes et votre responsabilité.</span></li>
         </ul>
         <a class="btn btn-orange" href="inscription-negociant.html">Vous vendez en toute confiance</a>
       </div>
-      <div class="aud-card white">
+      <div class="aud-card blue">
         <div class="aud-head">
           <svg class="aud-icon" viewBox="0 0 100 100"><rect x="24" y="14" width="52" height="72" rx="3" fill="none" stroke="var(--navy)" stroke-width="6"/><rect x="34" y="26" width="10" height="10" fill="var(--navy)"/><rect x="56" y="26" width="10" height="10" fill="var(--navy)"/><rect x="34" y="46" width="10" height="10" fill="var(--navy)"/><rect x="56" y="46" width="10" height="10" fill="var(--navy)"/><rect x="42" y="66" width="16" height="20" fill="var(--navy)"/></svg>
           <div class="aud-title">Pour les entreprises et salariés</div>
         </div>
         <ul>
-          <li><span class="tick">✓</span>Autorisez vos salariés, sous-traitants et intérimaires en un clic.</li>
-          <li><span class="tick">✓</span>Suivez les retraits en temps réel par collaborateur.</li>
-          <li><span class="tick">✓</span>Gagnez en transparence et en sérénité sur vos chantiers.</li>
+          <li><span class="tick">✓</span><span><b>Autorisez vos salariés</b>, sous-traitants et intérimaires en un clic.</span></li>
+          <li><span class="tick">✓</span><span><b>Suivez les retraits en temps réel</b> par collaborateur.</span></li>
+          <li><span class="tick">✓</span><span>Gagnez en transparence et en sérénité sur vos chantiers.</span></li>
+          <li><span class="tick">✓</span><span><b>Désactivez en un clic</b> un salarié ou intérimaire qui quitte l'entreprise.</span></li>
+          <li><span class="tick">✓</span><span><b>Suivez les dépenses</b> liées à chaque chantier grâce aux filtres.</span></li>
         </ul>
         <a class="btn btn-dark" href="inscription.html">Vous travaillez en toute sérénité</a>
       </div>
       <div class="aud-card navy qr-card">
         <div class="aud-head">
-          <svg class="aud-icon" viewBox="0 0 100 100"><path d="M20 40 L80 40 C80 53 77 64 62 75 C56 80 52 84 50 87 C48 84 44 80 38 75 C23 64 20 53 20 40 Z" fill="none" stroke="var(--orange)" stroke-width="6"/><path d="M36 52 L47 62 L68 40" stroke="var(--orange)" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <svg class="aud-icon" viewBox="0 0 100 100"><path d="M50 14 L77 23 V47 C77 64 66 78 50 86 C34 78 23 64 23 47 V23 Z" fill="none" stroke="var(--orange)" stroke-width="6" stroke-linejoin="round"/><path d="M38 49 L47 58 L63 38" stroke="var(--orange)" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
           <div class="aud-title" style="color:#fff">Découvrez NégoceID</div>
         </div>
         <p>Demandez votre démonstration gratuite et découvrez une solution simple, fiable et efficace.</p>
@@ -356,21 +362,21 @@ footer{background:var(--navy);color:#9BA6BE;padding:44px 0 26px}
         <div class="price-kind">Indépendant</div>
         <div class="price-amount">9€<span>HT / mois</span></div>
         <div class="price-cap">1 utilisateur</div>
-        <a class="btn btn-outline" href="inscription.html">Créer mon compte</a>
+        <a class="btn btn-outline" href="inscription.html">Choisir cette formule</a>
       </div>
       <div class="price-card featured">
         <div class="price-badge">Recommandé</div>
         <div class="price-kind">Petite entreprise</div>
         <div class="price-amount">39€<span>HT / mois</span></div>
         <div class="price-cap">Jusqu'à 10 utilisateurs</div>
-        <a class="btn btn-orange" href="inscription.html">Créer mon compte</a>
+        <a class="btn btn-orange" href="inscription.html">Choisir cette formule</a>
       </div>
       <div class="price-card">
         <div class="price-badge">Entreprise</div>
         <div class="price-kind">Entreprise</div>
         <div class="price-amount">79€<span>HT / mois</span></div>
         <div class="price-cap">Jusqu'à 50 utilisateurs</div>
-        <a class="btn btn-outline" href="inscription.html">Créer mon compte</a>
+        <a class="btn btn-outline" href="inscription.html">Choisir cette formule</a>
       </div>
       <div class="price-card">
         <div class="price-badge">Grande entreprise</div>
@@ -382,14 +388,14 @@ footer{background:var(--navy);color:#9BA6BE;padding:44px 0 26px}
     </div>
     <div class="pricing-foot">
       <div>🔒 Stockage sécurisé</div>
-      <div>🇫🇷 Support français</div>
+      <div>🇪🇺 Support européen</div>
       <div>✅ Sans engagement</div>
       <div>⚡ Activation immédiate</div>
     </div>
     <div style="margin-top:40px">
       <div class="signup-banner">
         <div><b>Créez votre compte en 2 minutes</b><span>negoce-id.fr/inscription.html</span></div>
-        <a class="btn" style="background:#fff;color:var(--orange-dark)" href="inscription.html">Créer mon compte →</a>
+        <a class="btn" style="background:#fff;color:var(--orange-dark)" href="inscription.html">Commencer maintenant →</a>
       </div>
     </div>
   </div>
