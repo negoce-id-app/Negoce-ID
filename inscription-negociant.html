@@ -10,7 +10,7 @@
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
-:root{--navy:#0F1F3D;--gold:#D4A843;--bg:#F2F4F8;--white:#fff;--muted:#7B8BAD;--border:#E4E8F0;--shadow:0 2px 20px rgba(15,31,61,0.10)}
+:root{--navy:#0F1F3D;--gold:#FF6A1A;--bg:#F2F4F8;--white:#fff;--muted:#7B8BAD;--border:#E4E8F0;--shadow:0 2px 20px rgba(15,31,61,0.10)}
 body{font-family:'Inter',sans-serif;background:var(--bg);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
 .card{background:var(--white);border-radius:20px;padding:36px;width:100%;max-width:420px;box-shadow:var(--shadow)}
 .logo{font-size:22px;font-weight:900;color:var(--navy);text-align:center;margin-bottom:4px}
@@ -24,6 +24,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);min-height:100vh;displa
 .btn{width:100%;padding:14px;background:var(--navy);color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;margin-top:8px}
 .btn:disabled{opacity:0.5}
 .err{background:#FEE;color:#C62828;border-radius:8px;padding:10px;font-size:13px;margin-top:12px;display:none}
+.siret-status{display:none;font-size:13px;line-height:1.5;margin-top:6px;padding:10px 12px;border-radius:10px;font-weight:600}
 .ok{background:#EDFBF3;color:#0CAF60;border-radius:12px;padding:20px;font-size:14px;line-height:1.6;text-align:center;display:none}
 .ok b{display:block;font-size:17px;margin-bottom:6px}
 </style>
@@ -42,12 +43,14 @@ body{font-family:'Inter',sans-serif;background:var(--bg);min-height:100vh;displa
     </div>
     <div class="form-group">
       <label class="form-lbl">Numéro SIRET</label>
-      <input class="form-in" id="fSiret" type="text" placeholder="123 456 789 00012" maxlength="17" inputmode="numeric">
+      <input class="form-in" id="fSiret" type="text" placeholder="123 456 789 00012" maxlength="17" inputmode="numeric" oninput="onSiretInput()">
       <div class="form-hint">14 chiffres, disponible sur votre Kbis ou societe.com</div>
+      <div class="siret-status" id="siretStatus"></div>
     </div>
     <div class="form-group">
       <label class="form-lbl">Département</label>
       <select class="form-in" id="fDept"></select>
+      <div class="form-hint">Rempli automatiquement dès que le SIRET est reconnu — modifiable si besoin</div>
     </div>
     <div class="form-group">
       <label class="form-lbl">Votre email</label>
@@ -85,6 +88,77 @@ var DEPARTEMENTS = "01|Ain,02|Aisne,03|Allier,04|Alpes-de-Haute-Provence,05|Haut
     return '<option value="'+d.code+'">'+d.code+' - '+d.nom+'</option>';
   }).join("");
 })();
+
+// Détection automatique via le SIRET (même relais "check-siret-ts" que
+// inscription.html) : dès que 14 chiffres valides sont saisis, on retrouve
+// le nom officiel, le département et la ville de l'établissement, pour
+// pré-remplir le département et suggérer un nom d'agence — sans jamais
+// bloquer l'inscription si l'API ne trouve rien (saisie manuelle en secours).
+var detected = { nom: null, departement: null, ville: null };
+var siretTimer = null;
+var agenceManuallyEdited = false;
+
+// Si l'utilisateur commence à taper lui-même dans "Nom de l'agence", on ne
+// doit plus écraser sa saisie avec une suggestion automatique.
+document.getElementById("fAgence").addEventListener("input", function() {
+  agenceManuallyEdited = true;
+});
+
+function onSiretInput() {
+  clearTimeout(siretTimer);
+  var raw = document.getElementById("fSiret").value.replace(/\s+/g, "");
+  var statusEl = document.getElementById("siretStatus");
+  detected = { nom: null, departement: null, ville: null };
+  if (!/^[0-9]{14}$/.test(raw)) {
+    statusEl.style.display = "none";
+    return;
+  }
+  statusEl.style.display = "block";
+  statusEl.style.background = "#F2F4F8";
+  statusEl.style.color = "#7B8BAD";
+  statusEl.textContent = "🔍 Vérification du SIRET...";
+  siretTimer = setTimeout(function() { checkSiretLive(raw); }, 500);
+}
+
+async function checkSiretLive(siret) {
+  var statusEl = document.getElementById("siretStatus");
+  var currentRaw = document.getElementById("fSiret").value.replace(/\s+/g, "");
+  if (currentRaw !== siret) return;
+  try {
+    var res = await fetch(SUPABASE_URL + "/functions/v1/check-siret-ts?siret=" + siret, {
+      headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY }
+    });
+    if (!res.ok) { statusEl.style.display = "none"; return; }
+    var data = await res.json();
+    if (data.blocked) {
+      statusEl.style.background = "#FEE";
+      statusEl.style.color = "#C62828";
+      statusEl.textContent = "⚠️ " + data.blocked;
+      return;
+    }
+    var nom = data.nom || null;
+    var dept = data.departement || null;
+    var ville = data.ville || null;
+    detected = { nom: nom, departement: dept, ville: ville };
+    if (!nom) {
+      statusEl.style.display = "none";
+      return;
+    }
+    var deptEntry = dept ? DEPARTEMENTS.find(function(d){ return d.code === dept; }) : null;
+    statusEl.style.background = "#EDFBF3";
+    statusEl.style.color = "#0CAF60";
+    statusEl.textContent = "✅ " + nom + (ville ? " — " + ville : "") + (deptEntry ? " (" + deptEntry.code + " - " + deptEntry.nom + ")" : "");
+    if (dept) document.getElementById("fDept").value = dept;
+    // Suggestion du nom d'agence (nom officiel + ville), seulement si le
+    // champ est encore vide ou n'a pas été modifié à la main.
+    if (!agenceManuallyEdited) {
+      var suggestion = nom + (ville ? " " + ville : "");
+      document.getElementById("fAgence").value = suggestion;
+    }
+  } catch (e) {
+    statusEl.style.display = "none";
+  }
+}
 
 async function submitForm() {
   var agence = document.getElementById("fAgence").value.trim();

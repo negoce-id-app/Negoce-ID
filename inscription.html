@@ -10,7 +10,7 @@
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
-:root{--navy:#0F1F3D;--gold:#D4A843;--bg:#F2F4F8;--white:#fff;--muted:#7B8BAD;--border:#E4E8F0;--shadow:0 2px 20px rgba(15,31,61,0.10)}
+:root{--navy:#0F1F3D;--gold:#FF6A1A;--bg:#F2F4F8;--white:#fff;--muted:#7B8BAD;--border:#E4E8F0;--shadow:0 2px 20px rgba(15,31,61,0.10)}
 body{font-family:'Inter',sans-serif;background:var(--bg);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
 .card{background:var(--white);border-radius:20px;padding:36px;width:100%;max-width:420px;box-shadow:var(--shadow)}
 .logo{font-size:22px;font-weight:900;color:var(--navy);text-align:center;margin-bottom:4px}
@@ -102,14 +102,14 @@ function fillDeptSelect() {
 // d'être tapés à la main. Si l'API échoue ou ne trouve rien (SIRET tout
 // juste attribué, pas encore indexé), on affiche les champs manuels en
 // secours — l'inscription reste possible dans tous les cas.
-var detected = { nom: null, departement: null };
+var detected = { nom: null, departement: null, ville: null };
 var siretTimer = null;
 
 function onSiretInput() {
   clearTimeout(siretTimer);
   var raw = document.getElementById("fSiret").value.replace(/\s+/g, "");
   var statusEl = document.getElementById("siretStatus");
-  detected = { nom: null, departement: null };
+  detected = { nom: null, departement: null, ville: null };
   document.getElementById("manualNomGroup").style.display = "none";
   document.getElementById("manualDeptGroup").style.display = "none";
   if (!/^[0-9]{14}$/.test(raw)) {
@@ -158,8 +158,10 @@ async function checkSiretLive(siret) {
     }
     var nom = data.nom || null;
     var dept = data.departement || null;
+    var ville = data.ville || null;
     detected.nom = nom;
     detected.departement = dept;
+    detected.ville = ville;
     if (!nom) {
       showManualFallback("❓ Établissement non trouvé automatiquement — merci de compléter les champs ci-dessous.");
       return;
@@ -167,7 +169,7 @@ async function checkSiretLive(siret) {
     var deptEntry = dept ? DEPARTEMENTS.find(function(d){ return d.code === dept; }) : null;
     statusEl.style.background = "#EDFBF3";
     statusEl.style.color = "#0CAF60";
-    statusEl.textContent = "✅ " + nom + (deptEntry ? " — " + deptEntry.code + " (" + deptEntry.nom + ")" : "");
+    statusEl.textContent = "✅ " + nom + (ville ? " — " + ville : "") + (deptEntry ? " (" + deptEntry.code + " - " + deptEntry.nom + ")" : "");
     document.getElementById("manualNomGroup").style.display = "none";
     if (!dept) {
       document.getElementById("manualDeptGroup").style.display = "block";
