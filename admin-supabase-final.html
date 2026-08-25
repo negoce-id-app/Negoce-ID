@@ -2374,6 +2374,9 @@ body{font-family:'Inter',sans-serif;background:var(--bg);min-height:100vh}
 .form-group{margin-bottom:14px;text-align:left}
 .form-lbl{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px;display:block}
 .form-in{width:100%;padding:12px 14px;border:2px solid var(--border);border-radius:10px;font-size:14px;color:var(--navy)}
+.pwd-wrap{position:relative}
+.pwd-wrap .form-in{padding-right:42px}
+.pwd-eye{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;padding:6px;line-height:1}
 .form-in:focus{outline:none;border-color:var(--orange)}
 .btn-login{width:100%;padding:14px;background:var(--orange);color:white;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;margin-top:8px}
 .login-err{background:#FEE;color:#C62828;border-radius:8px;padding:10px;font-size:13px;margin-top:10px;display:none}
@@ -2480,7 +2483,10 @@ tr:hover td{background:#FAFBFF}
     </div>
     <div class="form-group">
       <label class="form-lbl">Mot de passe</label>
-      <input class="form-in" id="loginPwd" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')login()">
+      <div class="pwd-wrap">
+        <input class="form-in" id="loginPwd" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')login()">
+        <button type="button" class="pwd-eye" onclick="togglePwdVisibility('loginPwd', this)">👁</button>
+      </div>
     </div>
     <button class="btn-login" onclick="login()">Accéder au dashboard →</button>
     <div class="login-err" id="loginErr">❌ Identifiants incorrects</div>
@@ -2613,6 +2619,7 @@ tr:hover td{background:#FAFBFF}
         <div class="section-actions">
           <button class="btn-action btn-gold" onclick="openAddSalarie()">+ Ajouter</button>
           <button class="btn-action btn-outline" onclick="openImportSalaries()">📥 Importer un fichier</button>
+          <button class="btn-action btn-outline" onclick="openCodesList()">📋 Codes &amp; liens</button>
           <button class="btn-action btn-outline" onclick="exportCSV('salaries')">⬇️ Export</button>
         </div>
       </div>
@@ -2822,6 +2829,26 @@ tr:hover td{background:#FAFBFF}
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeModal('modalImportSalaries')">Fermer</button>
       <button class="btn-save" id="btnLancerImport" onclick="lancerImportSalaries()" disabled>📥 Importer</button>
+    </div>
+  </div>
+</div>
+
+<!-- LISTE DES CODES / LIENS À ENVOYER MANUELLEMENT -->
+<div class="modal-bg" id="modalCodes">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-title">📋 Codes &amp; liens salariés</div>
+    <div style="font-size:12.5px;color:var(--muted);margin-bottom:14px;line-height:1.5">
+      Pour chaque salarié, copiez le message prêt à envoyer (lien vers "Ma carte" + code personnel) et collez-le où vous voulez : SMS, WhatsApp, email...
+    </div>
+    <div style="max-height:400px;overflow-y:auto;border:1px solid var(--border);border-radius:10px">
+      <table style="width:100%">
+        <thead><tr><th>Nom</th><th>Code</th><th></th></tr></thead>
+        <tbody id="codesListBody"></tbody>
+      </table>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('modalCodes')">Fermer</button>
+      <button class="btn-save" onclick="copyAllSalarieLinks()">📋 Tout copier</button>
     </div>
   </div>
 </div>
@@ -4790,6 +4817,55 @@ async function saveSalarie() {
   loadData();
 }
 
+var APP_URL_SALARIE = "https://negoce-id.fr/salarie-supabase_8.html";
+
+function messageCarteSalarie(s) {
+  var prenom = s.prenom || "";
+  return "Bonjour " + prenom + ", voici votre carte NégoceID : " + APP_URL_SALARIE
+    + " — Votre identifiant : " + s.code
+    + ". Lors de votre première connexion, vous choisirez votre propre code PIN.";
+}
+
+async function copyToClipboard(text, btn) {
+  try {
+    await navigator.clipboard.writeText(text);
+    if (btn) { var old = btn.textContent; btn.textContent = "✅ Copié"; setTimeout(function(){ btn.textContent = old; }, 1500); }
+  } catch (e) {
+    // Contexte sans clipboard (rare) : on affiche le texte pour copie manuelle
+    prompt("Copie manuelle (Cmd+C puis Entrée) :", text);
+  }
+}
+
+function openCodesList() {
+  var body = document.getElementById("codesListBody");
+  if (!salaries || !salaries.length) {
+    body.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--muted);padding:16px">Aucun salarié</td></tr>';
+  } else {
+    body.innerHTML = salaries.map(function(s) {
+      var codeAttr = escJsAttr(s.code);
+      return '<tr>'+
+        '<td>'+esc(s.prenom ? s.nom+' '+s.prenom : s.nom)+'</td>'+
+        '<td><code style="font-size:11px;font-weight:700;color:var(--navy)">'+esc(s.code)+'</code></td>'+
+        '<td><button class="btn-tbl" onclick="copySalarieLink(\''+codeAttr+'\', this)">📋 Copier</button></td>'+
+      '</tr>';
+    }).join("");
+  }
+  document.getElementById("modalCodes").classList.add("open");
+}
+
+function copySalarieLink(code, btn) {
+  var s = (salaries || []).find(function(x) { return x.code === code; });
+  if (!s) return;
+  copyToClipboard(messageCarteSalarie(s), btn);
+}
+
+function copyAllSalarieLinks() {
+  if (!salaries || !salaries.length) return;
+  var all = salaries.map(messageCarteSalarie).join("\n\n");
+  copyToClipboard(all, null);
+  alert("✅ Tous les messages copiés (un par salarié, séparés par une ligne vide) — collez-les où vous voulez.");
+}
+
 async function sendCarteSalarie(code) {
   var s = (salaries || []).find(function(x) { return x.code === code; });
   if (!s || !s.telephone) { alert("❌ Aucun numéro de téléphone renseigné pour ce salarié — ajoutez-le d'abord via ✏️."); return; }
@@ -4880,6 +4956,12 @@ function exportCSV(type) {
 }
 
 function closeModal(id) { document.getElementById(id).classList.remove("open"); }
+
+function togglePwdVisibility(id, btn) {
+  var el = document.getElementById(id);
+  if (el.type === "password") { el.type = "text"; btn.textContent = "🙈"; }
+  else { el.type = "password"; btn.textContent = "👁"; }
+}
 
 var currentUser = null;
 </script>

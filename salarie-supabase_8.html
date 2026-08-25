@@ -2360,6 +2360,9 @@ body{font-family:'Inter',sans-serif;background:var(--bg);display:flex;flex-direc
 .field{width:100%;max-width:300px;margin-bottom:10px}
 .field-lbl{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:7px;display:block}
 .field-in{width:100%;padding:17px;border:2px solid var(--border);border-radius:14px;font-size:21px;font-weight:700;letter-spacing:4px;text-align:center;text-transform:uppercase;color:var(--navy);font-family:monospace;background:var(--white);-webkit-appearance:none}
+.pwd-wrap{position:relative}
+.pwd-wrap .field-in{padding-right:46px}
+.pwd-eye{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:18px;padding:6px;line-height:1}
 .field-in:focus{outline:none;border-color:var(--orange)}
 .btn{width:100%;max-width:300px;padding:17px;background:var(--orange);color:white;border:none;border-radius:14px;font-size:15px;font-weight:700;cursor:pointer}
 .btn:active{opacity:0.82}
@@ -2458,7 +2461,10 @@ textarea.dmd-in{resize:none;min-height:80px}
   </div>
   <div class="field">
     <label class="field-lbl">Mot de passe (4 chiffres)</label>
-    <input class="field-in" id="loginPwd" type="password" inputmode="numeric" placeholder="••••" maxlength="4" autocomplete="off" onkeydown="if(event.key==='Enter')login()">
+    <div class="pwd-wrap">
+      <input class="field-in" id="loginPwd" type="password" inputmode="numeric" placeholder="••••" maxlength="4" autocomplete="off" onkeydown="if(event.key==='Enter')login()">
+      <button type="button" class="pwd-eye" onclick="togglePwdVisibility('loginPwd', this)">👁</button>
+    </div>
   </div>
   <button class="btn" id="loginBtn" onclick="login()">Accéder →</button>
   <div class="hidden" id="loginFaceIdHint" style="width:100%;max-width:300px;text-align:center;margin-top:6px">
@@ -2600,6 +2606,12 @@ var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
 // Échappement HTML — utilisé pour toute donnée insérée via innerHTML
 // (nom d'agence, message, chantier...) afin d'empêcher qu'un texte du
 // type <script> ne s'exécute dans cette session salarié.
+function togglePwdVisibility(id, btn) {
+  var el = document.getElementById(id);
+  if (el.type === "password") { el.type = "text"; btn.textContent = "🙈"; }
+  else { el.type = "password"; btn.textContent = "👁"; }
+}
+
 function esc(v) {
   return String(v == null ? "" : v)
     .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")

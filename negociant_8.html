@@ -35,6 +35,9 @@ body{font-family:'Inter',sans-serif;background:var(--bg);display:flex;flex-direc
 .field{width:100%;max-width:300px;margin-bottom:10px}
 .field-lbl{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:7px;display:block}
 .field-in{width:100%;padding:14px;border:2px solid var(--border);border-radius:14px;font-size:15px;font-weight:600;color:var(--navy);background:var(--white);-webkit-appearance:none}
+.pwd-wrap{position:relative}
+.pwd-wrap .field-in{padding-right:44px}
+.pwd-eye{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:17px;padding:6px;line-height:1}
 .field-in:focus{outline:none;border-color:var(--orange)}
 .btn-login{width:100%;max-width:300px;padding:17px;background:var(--orange);color:white;border:none;border-radius:14px;font-size:15px;font-weight:700;cursor:pointer;margin-top:4px}
 .btn-login:active{opacity:0.82}
@@ -247,7 +250,10 @@ body{font-family:'Inter',sans-serif;background:var(--bg);display:flex;flex-direc
   </div>
   <div class="field">
     <label class="field-lbl">Code d'accès agence</label>
-    <input class="field-in" id="loginPwd" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')loginNego()">
+    <div class="pwd-wrap">
+      <input class="field-in" id="loginPwd" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')loginNego()">
+      <button type="button" class="pwd-eye" onclick="togglePwdVisibility('loginPwd', this)">👁</button>
+    </div>
   </div>
   <button class="btn-login" onclick="loginNego()">Accéder →</button>
   <div class="err" id="loginErr">❌ Code incorrect</div>
@@ -548,6 +554,12 @@ var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
 // message n'est pas reconnu — par exemple nos propres messages d'erreur
 // SQL, déjà écrits en français — on le laisse tel quel plutôt que de le
 // remplacer par un message générique qui ferait perdre l'information.
+function togglePwdVisibility(id, btn) {
+  var el = document.getElementById(id);
+  if (el.type === "password") { el.type = "text"; btn.textContent = "🙈"; }
+  else { el.type = "password"; btn.textContent = "👁"; }
+}
+
 function frError(err) {
   var raw = (err && err.message) ? err.message : (typeof err === "string" ? err : "");
   if (raw) console.error("Erreur technique:", raw);
