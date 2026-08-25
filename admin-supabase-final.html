@@ -4247,6 +4247,7 @@ function renderAll() {
         '<td><button class="btn-tbl" onclick="showQR(\''+codeAttr+'\')">📱 QR</button></td>'+
         '<td>'+
           '<button class="btn-tbl" onclick="editSalarie(\''+codeAttr+'\')">✏️</button>'+
+          '<button class="btn-tbl" onclick="sendCarteSalarie(\''+codeAttr+'\')" title="Envoyer la carte par SMS">📲</button>'+
           '<button class="btn-tbl" onclick="resetSalariePin(\''+codeAttr+'\')" title="Réinitialiser le mot de passe">🔑</button>'+
           '<button class="btn-tbl danger" onclick="toggleStatut(\''+codeAttr+'\',\''+statutAttr+'\')">'+
             (s.statut==="ACTIF"?"🔴 Désactiver":"🟢 Activer")+
@@ -4787,6 +4788,23 @@ async function saveSalarie() {
   } catch(e) { console.error("saveSalarie error", e); alert("❌ Erreur :\n" + frError(e)); return; }
   closeModal("modalSalarie");
   loadData();
+}
+
+async function sendCarteSalarie(code) {
+  var s = (salaries || []).find(function(x) { return x.code === code; });
+  if (!s || !s.telephone) { alert("❌ Aucun numéro de téléphone renseigné pour ce salarié — ajoutez-le d'abord via ✏️."); return; }
+  if (!confirm("Envoyer la carte NégoceID par SMS à " + (s.prenom||"") + " " + s.nom + " (" + s.telephone + ") ?")) return;
+  try {
+    var { data: { session } } = await supabase.auth.getSession();
+    var res = await fetch(SUPABASE_URL + "/functions/v1/send-carte-salarie", {
+      method: "POST",
+      headers: { "Authorization": "Bearer " + session.access_token, "Content-Type": "application/json" },
+      body: JSON.stringify({ code: code })
+    });
+    var result = await res.json();
+    if (!res.ok) { alert("❌ Erreur : " + (result.error || "envoi impossible")); return; }
+    alert("✅ SMS envoyé à " + s.telephone + " !");
+  } catch(e) { console.error("sendCarteSalarie error", e); alert("❌ Erreur lors de l'envoi :\n" + frError(e)); }
 }
 
 async function resetSalariePin(code) {
