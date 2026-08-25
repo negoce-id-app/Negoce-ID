@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="apple-touch-icon" href="negociant-icon-180.png">
+<link rel="icon" type="image/png" sizes="512x512" href="negociant-icon-512.png">
 <title>NégoceID — Admin</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <!-- SheetJS : lecture du fichier importé (xlsx/xls/csv) et génération du
@@ -4821,12 +4823,15 @@ var APP_URL_SALARIE = "https://negoce-id.fr/salarie-supabase_8.html";
 
 function messageCarteSalarie(s) {
   var prenom = s.prenom || "";
-  // Le code sur sa propre ligne : sur mobile, un appui long le sélectionne
-  // en entier d'un coup, prêt à coller dans le champ "Identifiant" de l'app.
-  return "Bonjour " + prenom + ", voici votre carte NégoceID.\n"
-    + "1) Ouvrez : " + APP_URL_SALARIE + "\n"
-    + "2) Collez cet identifiant :\n" + s.code + "\n"
-    + "3) Choisissez votre code PIN à la première connexion.";
+  // Le code dans son propre paragraphe (ligne vide avant ET après) : sur
+  // mobile, un appui long ne sélectionne QUE le code, sans accrocher le
+  // texte voisin, prêt à coller tel quel dans le champ "Identifiant".
+  return "Bonjour " + prenom + ", voici votre carte NégoceID.\n\n"
+    + "Ouvrez : " + APP_URL_SALARIE + "\n\n"
+    + "Votre identifiant (à coller dans l'app) :\n\n"
+    + s.code + "\n\n"
+    + "Vous choisirez votre code PIN à la première connexion.\n\n"
+    + "Astuce : ajoutez la page à votre écran d'accueil (Partager > Sur l'écran d'accueil sur iPhone, ou menu ⋮ > Ajouter à l'écran d'accueil sur Android) pour l'avoir comme une appli.";
 }
 
 async function copyToClipboard(text, btn) {
