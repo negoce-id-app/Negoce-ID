@@ -4821,9 +4821,12 @@ var APP_URL_SALARIE = "https://negoce-id.fr/salarie-supabase_8.html";
 
 function messageCarteSalarie(s) {
   var prenom = s.prenom || "";
-  return "Bonjour " + prenom + ", voici votre carte NégoceID : " + APP_URL_SALARIE
-    + " — Votre identifiant : " + s.code
-    + ". Lors de votre première connexion, vous choisirez votre propre code PIN.";
+  // Le code sur sa propre ligne : sur mobile, un appui long le sélectionne
+  // en entier d'un coup, prêt à coller dans le champ "Identifiant" de l'app.
+  return "Bonjour " + prenom + ", voici votre carte NégoceID.\n"
+    + "1) Ouvrez : " + APP_URL_SALARIE + "\n"
+    + "2) Collez cet identifiant :\n" + s.code + "\n"
+    + "3) Choisissez votre code PIN à la première connexion.";
 }
 
 async function copyToClipboard(text, btn) {
@@ -4846,7 +4849,10 @@ function openCodesList() {
       return '<tr>'+
         '<td>'+esc(s.prenom ? s.nom+' '+s.prenom : s.nom)+'</td>'+
         '<td><code style="font-size:11px;font-weight:700;color:var(--navy)">'+esc(s.code)+'</code></td>'+
-        '<td><button class="btn-tbl" onclick="copySalarieLink(\''+codeAttr+'\', this)">📋 Copier</button></td>'+
+        '<td>'+
+          '<button class="btn-tbl" onclick="copySalarieLink(\''+codeAttr+'\', this)">📋 Message</button>'+
+          '<button class="btn-tbl" onclick="copyToClipboard(\''+codeAttr+'\', this)" title="Copier uniquement l\'identifiant">🔑 Code</button>'+
+        '</td>'+
       '</tr>';
     }).join("");
   }
