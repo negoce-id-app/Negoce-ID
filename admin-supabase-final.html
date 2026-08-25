@@ -2378,7 +2378,8 @@ body{font-family:'Inter',sans-serif;background:var(--bg);min-height:100vh}
 .form-in{width:100%;padding:12px 14px;border:2px solid var(--border);border-radius:10px;font-size:14px;color:var(--navy)}
 .pwd-wrap{position:relative}
 .pwd-wrap .form-in{padding-right:42px}
-.pwd-eye{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;padding:6px;line-height:1}
+.pwd-eye{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:6px;line-height:1;display:flex;align-items:center;justify-content:center;color:#6b7280}
+.pwd-eye:hover{color:#374151}
 .form-in:focus{outline:none;border-color:var(--orange)}
 .btn-login{width:100%;padding:14px;background:var(--orange);color:white;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;margin-top:8px}
 .login-err{background:#FEE;color:#C62828;border-radius:8px;padding:10px;font-size:13px;margin-top:10px;display:none}
@@ -2487,7 +2488,7 @@ tr:hover td{background:#FAFBFF}
       <label class="form-lbl">Mot de passe</label>
       <div class="pwd-wrap">
         <input class="form-in" id="loginPwd" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')login()">
-        <button type="button" class="pwd-eye" onclick="togglePwdVisibility('loginPwd', this)">👁</button>
+        <button type="button" class="pwd-eye" onclick="togglePwdVisibility('loginPwd', this)"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg></button>
       </div>
     </div>
     <button class="btn-login" onclick="login()">Accéder au dashboard →</button>
@@ -4968,10 +4969,12 @@ function exportCSV(type) {
 
 function closeModal(id) { document.getElementById(id).classList.remove("open"); }
 
+var EYE_SVG = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
+var EYE_OFF_SVG = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.94 10.94 0 0112 20c-7 0-11-8-11-8a18.5 18.5 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19M14.12 14.12a3 3 0 11-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>';
 function togglePwdVisibility(id, btn) {
   var el = document.getElementById(id);
-  if (el.type === "password") { el.type = "text"; btn.textContent = "🙈"; }
-  else { el.type = "password"; btn.textContent = "👁"; }
+  if (el.type === "password") { el.type = "text"; btn.innerHTML = EYE_OFF_SVG; }
+  else { el.type = "password"; btn.innerHTML = EYE_SVG; }
 }
 
 var currentUser = null;
