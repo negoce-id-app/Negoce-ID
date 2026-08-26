@@ -1463,7 +1463,7 @@ function renderVigilanceResult(body, nomEntreprise, data) {
   if (data.ancienneteAnnees !== null && data.ancienneteAnnees !== undefined) {
     html += '<div>Ancienneté : <strong>' + esc(String(data.ancienneteAnnees)) + ' an' + (data.ancienneteAnnees > 1 ? 's' : '') + '</strong></div>';
   }
-  if (data.trancheEffectif) {
+  if (data.trancheEffectif && data.trancheEffectif !== "NN") {
     html += '<div>Effectif : <strong>' + esc(data.trancheEffectif) + '</strong></div>';
   }
   html += '</div>';
