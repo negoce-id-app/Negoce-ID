@@ -3836,7 +3836,13 @@ function renderCompanyBar() {
 
 function selectCompany(company) {
   currentCompany = company;
-  document.getElementById("hdrCompany").textContent = company.nom;
+  // Pour le super_admin, l'entreprise sélectionnée est déjà visible dans
+  // la barre d'onglets juste en dessous : on garde "Super Admin" dans le
+  // badge d'en-tête plutôt que de le remplacer par le nom de l'entreprise
+  // à chaque changement d'onglet. Pour un company_admin (une seule
+  // entreprise, la sienne), on garde le nom de l'entreprise.
+  document.getElementById("hdrCompany").textContent =
+    (currentUser && currentUser.role === "super_admin") ? "Super Admin" : company.nom;
   document.getElementById("currentCompanyName").textContent = company.nom;
   document.querySelectorAll(".company-tab").forEach(function(t){t.classList.remove("active");});
   var tab = document.getElementById("tab-"+company.id);
