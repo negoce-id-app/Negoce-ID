@@ -481,6 +481,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);display:flex;flex-direc
           <select id="filtreEntrepriseHisto" onchange="onFiltreEntrepriseHistoChange()" class="filtre-select">
             <option value="">Toutes les entreprises</option>
           </select>
+          <button id="btnVigilance" class="btn-refresh filtre-btn" onclick="openVigilance()" disabled style="opacity:.45">🔍 Vigilance</button>
           <select id="filtreChantierHisto" onchange="renderHistoList()" class="filtre-select">
             <option value="">Tous les chantiers</option>
           </select>
@@ -533,6 +534,16 @@ body{font-family:'Inter',sans-serif;background:var(--bg);display:flex;flex-direc
 </div>
 
 <div class="safe-bot"></div>
+
+<div id="modalVigilance" style="display:none;position:fixed;inset:0;background:rgba(16,32,61,0.45);z-index:9999;align-items:center;justify-content:center;padding:16px">
+  <div style="background:var(--white);border-radius:18px;padding:22px;width:100%;max-width:380px;max-height:85vh;overflow-y:auto;box-shadow:var(--shadow)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <div style="font-weight:800;color:var(--navy);font-size:15px">🔍 Vigilance entreprise</div>
+      <button onclick="closeVigilanceModal()" style="border:none;background:transparent;font-size:18px;cursor:pointer;color:var(--muted)">✕</button>
+    </div>
+    <div id="vigilanceBody"></div>
+  </div>
+</div>
 
 <script>
 var SUPABASE_URL = "https://rzveghiwbjafmfhrfscb.supabase.co";
@@ -1385,6 +1396,91 @@ function updateChantierOptionsHisto() {
 function onFiltreEntrepriseHistoChange() {
   updateChantierOptionsHisto();
   renderHistoList();
+  updateVigilanceBtnState();
+}
+
+// Le bouton "Vigilance" n'a de sens que pour une entreprise précise
+// (pas "Toutes les entreprises") : on l'active/désactive en fonction du
+// filtre entreprise actuellement sélectionné.
+function updateVigilanceBtnState() {
+  var sel = document.getElementById("filtreEntrepriseHisto");
+  var btn = document.getElementById("btnVigilance");
+  if (!sel || !btn) return;
+  var actif = !!sel.value;
+  btn.disabled = !actif;
+  btn.style.opacity = actif ? "1" : ".45";
+}
+
+// ── VIGILANCE ENTREPRISE (signaux publics, PAS un score de solvabilité) ──
+async function openVigilance() {
+  var sel = document.getElementById("filtreEntrepriseHisto");
+  var companyId = sel ? sel.value : "";
+  if (!companyId) return;
+  var nomEntreprise = histoEntreprisesMap[companyId] || "cette entreprise";
+
+  var modal = document.getElementById("modalVigilance");
+  var body = document.getElementById("vigilanceBody");
+  body.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted)">🔍 Vérification en cours…</div>';
+  modal.style.display = "flex";
+
+  try {
+    var { data: { session } } = await supabase.auth.getSession();
+    var res = await fetch(SUPABASE_URL + "/functions/v1/check-vigilance-entreprise", {
+      method: "POST",
+      headers: { "Authorization": "Bearer " + session.access_token, "Content-Type": "application/json" },
+      body: JSON.stringify({ company_id: companyId })
+    });
+    var data = await res.json();
+    if (!res.ok) {
+      body.innerHTML = '<div style="text-align:center;padding:24px;color:var(--red)">❌ ' + esc(data.error || "Vérification impossible") + '</div>';
+      return;
+    }
+    renderVigilanceResult(body, nomEntreprise, data);
+  } catch (e) {
+    console.error("openVigilance error", e);
+    body.innerHTML = '<div style="text-align:center;padding:24px;color:var(--red)">❌ Vérification impossible :<br>' + esc(frError(e)) + '</div>';
+  }
+}
+
+function renderVigilanceResult(body, nomEntreprise, data) {
+  if (data.disponible === false) {
+    body.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted)">' + esc(data.message || "Aucune information disponible.") + '</div>';
+    return;
+  }
+
+  var alertes = Array.isArray(data.alertes) ? data.alertes : [];
+  var hasAlerte = alertes.length > 0;
+
+  var html = '';
+  html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">';
+  html += '<span style="font-size:22px">' + (hasAlerte ? '⚠️' : '✅') + '</span>';
+  html += '<div><strong style="color:var(--navy);font-size:15px">' + esc(nomEntreprise) + '</strong><br>';
+  html += '<span style="font-size:12.5px;color:var(--muted)">' + (hasAlerte ? "Signaux à vérifier" : "Aucun signal détecté") + '</span></div>';
+  html += '</div>';
+
+  html += '<div style="background:var(--bg);border-radius:12px;padding:12px 14px;font-size:13px;color:var(--navy);display:flex;flex-direction:column;gap:6px;margin-bottom:12px">';
+  html += '<div>État administratif : <strong>' + esc(data.etatAdministratif || "inconnu") + '</strong></div>';
+  if (data.ancienneteAnnees !== null && data.ancienneteAnnees !== undefined) {
+    html += '<div>Ancienneté : <strong>' + esc(String(data.ancienneteAnnees)) + ' an' + (data.ancienneteAnnees > 1 ? 's' : '') + '</strong></div>';
+  }
+  if (data.trancheEffectif) {
+    html += '<div>Effectif : <strong>' + esc(data.trancheEffectif) + '</strong></div>';
+  }
+  html += '</div>';
+
+  if (hasAlerte) {
+    html += '<div style="background:var(--red-bg);border-radius:12px;padding:12px 14px;font-size:13px;color:var(--red);display:flex;flex-direction:column;gap:6px;margin-bottom:12px">';
+    alertes.forEach(function(a) { html += '<div>⚠️ ' + esc(a) + '</div>'; });
+    html += '</div>';
+  }
+
+  html += '<div style="font-size:11px;color:var(--muted);line-height:1.5">' + esc(data.avertissement || "Informations publiques — pas un score de solvabilité officiel.") + '</div>';
+
+  body.innerHTML = html;
+}
+
+function closeVigilanceModal() {
+  document.getElementById("modalVigilance").style.display = "none";
 }
 
 function reinitialiserPeriodeHisto() {
@@ -1397,6 +1493,7 @@ function reinitialiserPeriodeHisto() {
   document.getElementById("filtreChantierHisto").value = "";
   document.getElementById("filtreStatutHisto").value = "";
   document.getElementById("filtreBlHisto").value = "";
+  updateVigilanceBtnState();
   loadHistorique();
 }
 
@@ -1447,6 +1544,7 @@ async function loadHistorique() {
     filtreEntSel.innerHTML = '<option value="">Toutes les entreprises</option>'
       + entOptions.map(function(e){return '<option value="'+esc(e.id)+'">'+esc(e.nom)+'</option>';}).join("");
     if (entIdsPresents.indexOf(currentEntVal) !== -1) filtreEntSel.value = currentEntVal;
+    updateVigilanceBtnState();
 
     // Le filtre chantier est en cascade : ses options dépendent de
     // l'entreprise actuellement sélectionnée, pour ne jamais proposer un
