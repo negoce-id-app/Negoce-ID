@@ -37,9 +37,9 @@ body{font-family:'Inter',sans-serif;background:var(--bg);min-height:100vh;displa
 
   <div id="formWrap">
     <div class="form-group">
-      <label class="form-lbl">Nom de l'agence</label>
-      <input class="form-in" id="fAgence" type="text" placeholder="ex : Négociant Lyon">
-      <div class="form-hint">Pensez à inclure la ville (ex : "Négociant Lyon" plutôt que "Négociant") pour être facilement reconnu</div>
+      <label class="form-lbl">Entité</label>
+      <input class="form-in" id="fAgence" type="text" placeholder="ex : UNIKALO Charente">
+      <div class="form-hint">Le nom du groupe ou de la société (ex : "UNIKALO Charente")</div>
     </div>
     <div class="form-group">
       <label class="form-lbl">Numéro SIRET</label>
@@ -48,9 +48,9 @@ body{font-family:'Inter',sans-serif;background:var(--bg);min-height:100vh;displa
       <div class="siret-status" id="siretStatus"></div>
     </div>
     <div class="form-group">
-      <label class="form-lbl">Ville de l'agence</label>
-      <input class="form-in" id="fVille" type="text" placeholder="ex : Lyon" oninput="villeManuallyEdited = true">
-      <div class="form-hint">Rempli automatiquement dès que le SIRET est reconnu — modifiable si besoin. Utile si votre société a plusieurs établissements.</div>
+      <label class="form-lbl">Nom de l'agence</label>
+      <input class="form-in" id="fVille" type="text" placeholder="ex : Mérignac" oninput="villeManuallyEdited = true">
+      <div class="form-hint">Le nom précis de cette agence (souvent sa ville) — utile pour distinguer plusieurs établissements de la même entité. Rempli automatiquement dès que le SIRET est reconnu — modifiable si besoin.</div>
     </div>
     <div class="form-group">
       <label class="form-lbl">Département</label>
@@ -160,11 +160,13 @@ async function checkSiretLive(siret) {
     if (ville && !villeManuallyEdited) {
       document.getElementById("fVille").value = ville;
     }
-    // Suggestion du nom d'agence (nom officiel + ville), seulement si le
-    // champ est encore vide ou n'a pas été modifié à la main.
+    // Suggestion du nom de l'entité (raison sociale/nom officiel détecté
+    // via le SIRET), seulement si le champ est encore vide ou n'a pas été
+    // modifié à la main. On ne combine plus avec la ville ici : la ville
+    // sert désormais à distinguer l'agence précise (champ "Nom de l'agence"
+    // ci-dessus), pas à composer le nom de l'entité.
     if (!agenceManuallyEdited) {
-      var suggestion = nom + (ville ? " " + ville : "");
-      document.getElementById("fAgence").value = suggestion;
+      document.getElementById("fAgence").value = nom;
     }
   } catch (e) {
     statusEl.style.display = "none";
@@ -183,7 +185,7 @@ async function submitForm() {
   errEl.style.display = "none";
 
   if (!agence || !siret || !ville || !departement || !email || !pwd1) {
-    errEl.textContent = "❌ Merci de remplir tous les champs, y compris la ville et le département";
+    errEl.textContent = "❌ Merci de remplir tous les champs, y compris le nom de l'agence et le département";
     errEl.style.display = "block";
     return;
   }

@@ -2657,7 +2657,7 @@ tr:hover td{background:#FAFBFF}
         <button class="btn-action btn-outline" onclick="reinitialiserPeriodePassages()">✕ Réinitialiser</button>
       </div>
       <div class="table-scroll"><table>
-        <thead><tr><th>Date / Heure</th><th>Code</th><th>Salarié</th><th>Agence</th><th>Chantier</th><th>Document</th><th>Résultat</th></tr></thead>
+        <thead><tr><th>Date / Heure</th><th>Code</th><th>Salarié</th><th>Nom de l'agence</th><th>Chantier</th><th>Document</th><th>Résultat</th></tr></thead>
         <tbody id="passagesBody"><tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">⏳ Chargement...</td></tr></tbody>
       </table></div>
     </div>
@@ -2729,7 +2729,7 @@ tr:hover td{background:#FAFBFF}
         <select class="filter-select" id="negociantDeptFilter" style="max-width:220px" onchange="renderNegociantsSection()"></select>
       </div>
       <div class="table-scroll"><table>
-        <thead><tr><th>Logo</th><th>Agence</th><th>SIRET / nom officiel</th><th>Ville</th><th>Département</th><th>Email</th><th>Lien de connexion</th><th>Action</th></tr></thead>
+        <thead><tr><th>Logo</th><th>Entité</th><th>SIRET / nom officiel</th><th>Nom de l'agence</th><th>Département</th><th>Email</th><th>Lien de connexion</th><th>Action</th></tr></thead>
         <tbody id="negociantsBody"><tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">⏳ Chargement...</td></tr></tbody>
       </table></div>
     </div>
@@ -2898,18 +2898,18 @@ tr:hover td{background:#FAFBFF}
   <div class="modal">
     <div class="modal-title" id="modalNegociantTitle">Ajouter une agence négociant</div>
     <div class="form-group">
-      <label class="form-lbl">Nom de l'agence</label>
-      <input class="form-in" id="negAgence" type="text" placeholder="Nom de l'agence" oninput="checkNegAgenceDuplicate()">
-      <div class="form-hint" id="negAgenceHint" style="display:none;color:var(--red)">⚠️ Ce nom est déjà utilisé par une autre agence — la connexion se fait par ce nom exact, deux agences identiques rendraient l'une injoignable. Utilisez un nom distinct (ex : ajoutez la ville) si c'est un autre établissement du même groupe.</div>
+      <label class="form-lbl">Entité</label>
+      <input class="form-in" id="negAgence" type="text" placeholder="ex : UNIKALO Charente" oninput="checkNegAgenceDuplicate()">
+      <div class="form-hint" id="negAgenceHint" style="display:none;color:var(--red)">⚠️ Ce nom est déjà utilisé par une autre agence — la connexion se fait par ce nom exact, deux agences identiques rendraient l'une injoignable. Utilisez un nom distinct (ex : ajoutez le nom de l'agence) si c'est un autre établissement du même groupe.</div>
     </div>
     <div class="form-group" id="negSiretGroup">
       <label class="form-lbl">Numéro SIRET</label>
       <input class="form-in" id="negSiret" type="text" placeholder="123 456 789 00012" maxlength="17" inputmode="numeric">
     </div>
     <div class="form-group">
-      <label class="form-lbl">Ville</label>
-      <input class="form-in" id="negVille" type="text" placeholder="ex : Lyon">
-      <div class="form-hint">Utile pour distinguer plusieurs agences d'un même SIREN (établissements secondaires)</div>
+      <label class="form-lbl">Nom de l'agence</label>
+      <input class="form-in" id="negVille" type="text" placeholder="ex : Mérignac">
+      <div class="form-hint">Le nom précis de cette agence (souvent sa ville) — utile pour distinguer plusieurs agences d'une même entité (établissements secondaires)</div>
     </div>
     <div class="form-group">
       <label class="form-lbl">Département</label>
@@ -3305,7 +3305,7 @@ function renderNegociantsSection() {
         '<td><code style="font-size:10px;word-break:break-all">'+esc(link)+'</code></td>'+
         '<td>'+
           validationBtns+
-          '<button class="btn-tbl" onclick="editNegociant(\''+uid+'\')" title="Renommer l\'agence / modifier sa ville ou son département">✏️ Modifier</button>'+
+          '<button class="btn-tbl" onclick="editNegociant(\''+uid+'\')" title="Renommer l\'entité / modifier le nom de l\'agence ou son département">✏️ Modifier</button>'+
           '<button class="btn-tbl" onclick="copyNegociantLink(\''+escJsAttr(link)+'\')">📋 Copier</button>'+
           '<button class="btn-tbl" onclick="showNegoQR(\''+escJsAttr(link)+'\',\''+escJsAttr(n.agence)+'\')" title="QR + code-barres de connexion, à flasher pour ouvrir directement la page de l\'agence">🔲 QR</button>'+
           (n.email ? '<button class="btn-tbl" onclick="resetNegociantPassword(\''+escJsAttr(n.email)+'\',\''+escJsAttr(n.agence)+'\')" title="Envoyer un lien de réinitialisation du mot de passe">🔑 Réinitialiser</button>' : '')+
@@ -3490,7 +3490,7 @@ async function saveNegociantEdit() {
   var agence = document.getElementById("negAgence").value.trim();
   var ville = document.getElementById("negVille").value.trim();
   var departement = document.getElementById("negDept").value;
-  if (!agence) { alert("Le nom de l'agence est obligatoire."); return; }
+  if (!agence) { alert("Le nom de l'entité est obligatoire."); return; }
   var btn = document.getElementById("modalNegociantSaveBtn");
   if (btn) { btn.disabled = true; btn.textContent = "Enregistrement..."; }
   try {
