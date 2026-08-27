@@ -3001,6 +3001,14 @@ var currentCompany = null;
 var salaries = [];
 var passages = [];
 var salPhotoData = null;
+// Table "passages" ne stocke que le nom d'agence (texte figé au moment du
+// scan, ex. "UNIKALO CHARENTE MERIGNAC") — pas de ville, et surtout pas de
+// lien vers app_users. Or plusieurs agences d'un même groupe partagent
+// souvent le même nom : dans l'historique, seule la ville permet de les
+// distinguer. Cette table de correspondance {agence -> ville} est chargée
+// une fois (loadAgenceVilleMap ci-dessous) et réutilisée dans renderAll()
+// pour afficher la ville à la place du nom de groupe.
+var agenceVilleMap = {};
 
 // ── AUTH ──
 // storageKey distinct : voir le commentaire équivalent dans negociant_8.html
@@ -4260,7 +4268,29 @@ async function loadData() {
     console.error("loadData salaries error", e);
     salaries = [];
   }
+  await loadAgenceVilleMap();
   await loadPassages();
+}
+
+// Charge la correspondance {nom d'agence -> ville} — voir le commentaire
+// sur agenceVilleMap plus haut. Accessible aussi bien au super admin qu'à
+// un company_admin (contrairement à list_negociants_admin, réservée au
+// super admin) : c'est juste une info d'annuaire (nom d'agence + ville),
+// déjà visible dans l'historique des passages de toute façon. En cas
+// d'échec (fonction pas encore déployée, etc.), on continue simplement à
+// afficher le nom de groupe comme avant — pas de blocage.
+async function loadAgenceVilleMap() {
+  try {
+    var { data, error } = await supabase.rpc('list_negociant_villes');
+    if (error) throw error;
+    var map = {};
+    (Array.isArray(data) ? data : []).forEach(function(row) {
+      if (row.agence && row.ville) map[row.agence] = row.ville;
+    });
+    agenceVilleMap = map;
+  } catch(e) {
+    console.error("loadAgenceVilleMap error", e);
+  }
 }
 
 // ── Chargement des passages, avec recherche par période ──
@@ -4400,11 +4430,21 @@ function renderAll() {
       var blDocCell = p.lien_bl
         ? '<a href="'+esc(p.lien_bl)+'" target="_blank" rel="noopener" style="font-size:11px;font-weight:700;color:var(--gold);text-decoration:underline">📎 Voir</a>'
         : '<span style="color:var(--muted);font-size:11px">—</span>';
+      // Plusieurs agences d'un même groupe partagent souvent le même nom
+      // (ex. "UNIKALO CHARENTE MERIGNAC" x2) — on affiche donc la ville
+      // (via agenceVilleMap, voir plus haut) plutôt que le nom de groupe,
+      // avec le nom complet en info-bulle pour garder le contexte. Si la
+      // ville n'est pas connue (agence pas encore renseignée / fonction
+      // pas déployée), on retombe simplement sur le nom d'agence.
+      var villeAgence = agenceVilleMap[p.agence] || null;
+      var agenceCell = villeAgence
+        ? '<span title="'+esc(p.agence)+'">'+esc(villeAgence)+'</span>'
+        : esc(p.agence);
       return '<tr>'+
         '<td style="font-size:12px">'+d+'</td>'+
         '<td><code style="font-size:11px;font-weight:700">'+esc(p.code_salarie)+'</code></td>'+
         '<td>'+esc(p.nom_salarie)+'</td>'+
-        '<td>'+esc(p.agence)+'</td>'+
+        '<td>'+agenceCell+'</td>'+
         '<td>'+(p.chantier?'<span style="font-size:12px;font-weight:600;color:var(--navy)">🏗️ '+esc(p.chantier)+'</span>':'<span style="color:var(--muted);font-size:11px">—</span>')+'</td>'+
         '<td>'+blDocCell+'</td>'+
         '<td><span class="pill '+(p.resultat==="AUTORISE"?"pill-green":"pill-red")+'">'+esc(p.resultat)+'</span></td>'+
