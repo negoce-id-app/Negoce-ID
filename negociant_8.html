@@ -411,9 +411,9 @@ body{font-family:'Inter',sans-serif;background:var(--bg);display:flex;flex-direc
     </div>
     <div class="manual-card">
       <div class="box-lbl">⌨️ Pas de douchette ni de caméra ?</div>
-      <div style="font-size:12px;color:var(--muted);margin:6px 0 10px">Tapez le code du salarié, puis comparez bien le code de confirmation affiché et la photo avec le salarié devant vous avant de valider le retrait.</div>
+      <div style="font-size:12px;color:var(--muted);margin:6px 0 10px">Tapez le code du salarié (fixe, ou le code dynamique à 6 chiffres affiché sur son "Ma carte"), puis comparez bien le code de confirmation affiché et la photo avec le salarié devant vous avant de valider le retrait.</div>
       <div style="display:flex;gap:8px">
-        <input class="manual-code-input" id="manualCodeInput" type="text" placeholder="Code, email ou téléphone du salarié" autocomplete="off" autocorrect="off" spellcheck="false" onkeydown="if(event.key==='Enter')submitManualCode()" style="flex:2">
+        <input class="manual-code-input" id="manualCodeInput" type="text" placeholder="Code, code dynamique, email ou téléphone" autocomplete="off" autocorrect="off" spellcheck="false" onkeydown="if(event.key==='Enter')submitManualCode()" style="flex:2">
         <button class="btn-cam" style="width:auto;padding:0 18px" onclick="submitManualCode()">Vérifier</button>
       </div>
       <div id="manualErr" style="display:none;color:var(--red);font-size:12px;margin-top:8px;font-weight:600"></div>
@@ -1050,6 +1050,18 @@ async function submitManualCode() {
   if (!raw) return;
   codeInput.value = "";
   var code = raw.toUpperCase();
+  // ESSAI : si ce qui est tapé ressemble à un code dynamique à 6 chiffres
+  // (voir negoceid-106-code-dynamique-totp.sql, "Ma carte" côté salarié),
+  // on essaie de le résoudre en priorité vers le vrai code_salarie — ça
+  // ne peut pas se confondre avec un code fixe classique (préfixe lettres
+  // + tiret, ex. "MAG-DUPONT..."). Si la fonction n'est pas encore
+  // déployée ou ne trouve rien, on continue normalement ci-dessous.
+  if (/^[0-9]{6}$/.test(raw)) {
+    try {
+      var { data: totpMatch, error: totpErr } = await supabase.rpc('resolve_salarie_by_totp', { p_totp_code: raw });
+      if (!totpErr && totpMatch) { showResult(totpMatch); return; }
+    } catch(e) { console.error("resolve_salarie_by_totp error", e); }
+  }
   // Accepte aussi l'email ou le téléphone du salarié en plus de son code
   // interne — même fonction de résolution que la connexion espace salarié
   // (negoceid-53). Si rien n'est trouvé, on retombe sur le texte tapé tel

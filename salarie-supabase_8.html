@@ -2529,6 +2529,18 @@ textarea.dmd-in{resize:none;min-height:80px}
     <img id="barcodeImg" src="" alt="Code-barres" style="width:100%;max-width:300px;margin-top:12px">
     <div class="qr-tip">Le fournisseur scanne le QR ou le code-barres,<br><strong>selon son lecteur, avec sa tablette au comptoir</strong></div>
   </div>
+  <!-- ESSAI : code dynamique (TOTP), pour le cas où le comptoir n'a ni
+       douchette ni caméra — voir negoceid-106-code-dynamique-totp.sql.
+       Contrairement au code fixe ci-dessus (icCode/QR), celui-ci change
+       toutes les 30s : impossible à noter/partager pour un usage
+       ultérieur. Le comptoir le tape dans son champ de saisie manuelle
+       habituel, exactement comme le code fixe. -->
+  <div class="qr-box" id="totpBox">
+    <div class="qr-lbl">🔐 Pas de scanner au comptoir ? Code dynamique</div>
+    <div id="totpCodeDisplay" style="font-size:34px;font-weight:800;letter-spacing:6px;color:#10203D;text-align:center;margin:8px 0;font-variant-numeric:tabular-nums">······</div>
+    <div id="totpCountdown" style="text-align:center;font-size:12px;font-weight:600;color:var(--muted)">—</div>
+    <div class="qr-tip">Donnez ce code au comptoir — il change toutes les 30 secondes, inutile de le noter ou de le partager.</div>
+  </div>
   <div class="ch-box">
     <div class="ch-lbl">🏗️ Chantiers autorisés</div>
     <div id="chList"></div>
@@ -2687,6 +2699,56 @@ function switchTab(tab, el) {
   document.getElementById("sDemande").classList.toggle("hidden", tab !== "demande");
   if (tab === "bl") loadBL();
   if (tab === "demande") openDemandeTab();
+  // Le code dynamique n'a d'intérêt que sur l'onglet "Ma carte" : on
+  // n'appelle get_my_totp_code() (donc on ne revalide le PIN) que
+  // pendant qu'il est réellement affiché.
+  if (tab === "carte") startTotpCountdown(); else stopTotpCountdown();
+}
+
+// ── ESSAI : code dynamique (TOTP) — voir negoceid-106-code-dynamique-totp.sql ──
+var totpTimer = null;
+var totpSecondsLeft = 0;
+
+async function refreshTotp() {
+  if (!currentCode || !currentPin) return;
+  try {
+    var { data, error } = await supabase.rpc('get_my_totp_code', { p_code: currentCode, p_pin: currentPin });
+    if (error) throw error;
+    var row = Array.isArray(data) ? data[0] : data;
+    var el = document.getElementById("totpCodeDisplay");
+    if (row && row.code) {
+      el.textContent = row.code.slice(0, 3) + " " + row.code.slice(3);
+      totpSecondsLeft = row.seconds_remaining;
+      document.getElementById("totpCountdown").textContent = "Valide encore " + totpSecondsLeft + "s";
+    } else if (el) {
+      el.textContent = "······";
+    }
+  } catch(e) {
+    console.error("get_my_totp_code error", e);
+    // Fonction pas encore déployée (essai) ou erreur réseau : on masque
+    // simplement le bloc plutôt que d'afficher une erreur — ce n'est pas
+    // bloquant, le QR/code-barres/code fixe restent utilisables.
+    var box = document.getElementById("totpBox");
+    if (box) box.style.display = "none";
+  }
+}
+
+function startTotpCountdown() {
+  if (totpTimer) clearInterval(totpTimer);
+  refreshTotp();
+  totpTimer = setInterval(function() {
+    totpSecondsLeft--;
+    if (totpSecondsLeft <= 0) {
+      refreshTotp();
+    } else {
+      var el = document.getElementById("totpCountdown");
+      if (el) el.textContent = "Valide encore " + totpSecondsLeft + "s";
+    }
+  }, 1000);
+}
+
+function stopTotpCountdown() {
+  if (totpTimer) { clearInterval(totpTimer); totpTimer = null; }
 }
 
 var currentUser = null;
@@ -3099,6 +3161,7 @@ function showCarte(user) {
   document.getElementById("sBL").classList.add("hidden");
 
   subscribeConfirmChannel(code);
+  startTotpCountdown();
 }
 
 // Reçoit en temps réel le code de confirmation généré côté serveur au
@@ -3145,6 +3208,7 @@ function out() {
   pendingUser = null;
   currentUser = null;
   unsubscribeConfirmChannel();
+  stopTotpCountdown();
   document.getElementById("codeIn").value = "";
   document.getElementById("loginPwd").value = "";
   document.getElementById("loginFaceIdHint").classList.add("hidden");
