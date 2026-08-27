@@ -37,20 +37,15 @@ body{font-family:'Inter',sans-serif;background:var(--bg);min-height:100vh;displa
 
   <div id="formWrap">
     <div class="form-group">
-      <label class="form-lbl">Entité</label>
-      <input class="form-in" id="fAgence" type="text" placeholder="ex : UNIKALO Charente">
-      <div class="form-hint">Le nom du groupe ou de la société (ex : "UNIKALO Charente")</div>
+      <label class="form-lbl">Nom de l'agence</label>
+      <input class="form-in" id="fVille" type="text" placeholder="ex : UNIKALO Charente Mérignac">
+      <div class="form-hint">Choisissez un nom qui identifie clairement cette agence. Si votre société a plusieurs établissements, pensez à inclure la ville pour ne pas avoir deux agences avec le même nom (ex : "UNIKALO Charente Mérignac").</div>
     </div>
     <div class="form-group">
       <label class="form-lbl">Numéro SIRET</label>
       <input class="form-in" id="fSiret" type="text" placeholder="123 456 789 00012" maxlength="17" inputmode="numeric" oninput="onSiretInput()">
       <div class="form-hint">14 chiffres, disponible sur votre Kbis ou societe.com</div>
       <div class="siret-status" id="siretStatus"></div>
-    </div>
-    <div class="form-group">
-      <label class="form-lbl">Nom de l'agence</label>
-      <input class="form-in" id="fVille" type="text" placeholder="ex : Mérignac" oninput="villeManuallyEdited = true">
-      <div class="form-hint">Le nom précis de cette agence (souvent sa ville) — utile pour distinguer plusieurs établissements de la même entité. Rempli automatiquement dès que le SIRET est reconnu — modifiable si besoin.</div>
     </div>
     <div class="form-group">
       <label class="form-lbl">Département</label>
@@ -97,18 +92,20 @@ var DEPARTEMENTS = "01|Ain,02|Aisne,03|Allier,04|Alpes-de-Haute-Provence,05|Haut
 // Détection automatique via le SIRET (même relais "check-siret-ts" que
 // inscription.html) : dès que 14 chiffres valides sont saisis, on retrouve
 // le nom officiel, le département et la ville de l'établissement, pour
-// pré-remplir le département et suggérer un nom d'agence — sans jamais
-// bloquer l'inscription si l'API ne trouve rien (saisie manuelle en secours).
+// pré-remplir le département — sans jamais bloquer l'inscription si l'API
+// ne trouve rien (saisie manuelle en secours).
+//
+// Le nom de l'agence, lui, N'EST PLUS auto-rempli à partir du SIRET : il
+// est entièrement libre, saisi à la main par le prospect. Ce choix évite
+// une source de confusion constatée en usage réel — une suggestion
+// automatique (nom officiel du SIRET) qui ne correspondait pas forcément
+// au nom que l'agence voulait vraiment utiliser pour se distinguer des
+// autres établissements du même groupe. La ville détectée reste captée en
+// silence (variable "detected" ci-dessous) et envoyée avec la demande,
+// uniquement à titre informatif côté admin — jamais affichée ni imposée
+// dans le champ.
 var detected = { nom: null, departement: null, ville: null };
 var siretTimer = null;
-var agenceManuallyEdited = false;
-var villeManuallyEdited = false;
-
-// Si l'utilisateur commence à taper lui-même dans "Nom de l'agence", on ne
-// doit plus écraser sa saisie avec une suggestion automatique.
-document.getElementById("fAgence").addEventListener("input", function() {
-  agenceManuallyEdited = true;
-});
 
 function onSiretInput() {
   clearTimeout(siretTimer);
@@ -155,28 +152,24 @@ async function checkSiretLive(siret) {
     statusEl.style.color = "#0CAF60";
     statusEl.textContent = "✅ " + nom + (ville ? " — " + ville : "") + (deptEntry ? " (" + deptEntry.code + " - " + deptEntry.nom + ")" : "");
     if (dept) document.getElementById("fDept").value = dept;
-    // Pré-remplit la ville détectée, seulement si le champ n'a pas été
-    // modifié à la main — même principe que le nom d'agence ci-dessous.
-    if (ville && !villeManuallyEdited) {
-      document.getElementById("fVille").value = ville;
-    }
-    // Suggestion du nom de l'entité (raison sociale/nom officiel détecté
-    // via le SIRET), seulement si le champ est encore vide ou n'a pas été
-    // modifié à la main. On ne combine plus avec la ville ici : la ville
-    // sert désormais à distinguer l'agence précise (champ "Nom de l'agence"
-    // ci-dessus), pas à composer le nom de l'entité.
-    if (!agenceManuallyEdited) {
-      document.getElementById("fAgence").value = nom;
-    }
+    // On ne touche plus au champ "Nom de l'agence" ici : ni le nom officiel
+    // ni la ville détectés ne sont écrits dedans automatiquement (voir le
+    // commentaire plus haut). "detected.ville" reste disponible pour
+    // submitForm() ci-dessous, qui l'envoie en silence avec la demande.
   } catch (e) {
     statusEl.style.display = "none";
   }
 }
 
 async function submitForm() {
-  var agence = document.getElementById("fAgence").value.trim();
+  // "fVille" est le seul champ de nom restant dans le formulaire, saisi
+  // librement — voir le commentaire au-dessus de "detected" plus haut. Sa
+  // valeur devient le nom d'agence (identifiant de connexion). La ville
+  // détectée via le SIRET (si trouvée) est envoyée séparément, en silence,
+  // uniquement à titre informatif côté admin.
+  var agence = document.getElementById("fVille").value.trim();
   var siret = document.getElementById("fSiret").value.replace(/\s+/g, "");
-  var ville = document.getElementById("fVille").value.trim();
+  var ville = detected.ville || null;
   var departement = document.getElementById("fDept").value;
   var email = document.getElementById("fEmail").value.trim().toLowerCase();
   var pwd1 = document.getElementById("fPwd1").value;
@@ -184,7 +177,7 @@ async function submitForm() {
   var errEl = document.getElementById("errMsg");
   errEl.style.display = "none";
 
-  if (!agence || !siret || !ville || !departement || !email || !pwd1) {
+  if (!agence || !siret || !departement || !email || !pwd1) {
     errEl.textContent = "❌ Merci de remplir tous les champs, y compris le nom de l'agence et le département";
     errEl.style.display = "block";
     return;

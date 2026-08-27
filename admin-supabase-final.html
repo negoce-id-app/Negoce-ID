@@ -2729,7 +2729,7 @@ tr:hover td{background:#FAFBFF}
         <select class="filter-select" id="negociantDeptFilter" style="max-width:220px" onchange="renderNegociantsSection()"></select>
       </div>
       <div class="table-scroll"><table>
-        <thead><tr><th>Logo</th><th>Entité</th><th>SIRET / nom officiel</th><th>Nom de l'agence</th><th>Département</th><th>Email</th><th>Lien de connexion</th><th>Action</th></tr></thead>
+        <thead><tr><th>Logo</th><th>Nom de l'agence</th><th>SIRET / nom officiel</th><th>Département</th><th>Email</th><th>Lien de connexion</th><th>Action</th></tr></thead>
         <tbody id="negociantsBody"><tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">⏳ Chargement...</td></tr></tbody>
       </table></div>
     </div>
@@ -2898,18 +2898,14 @@ tr:hover td{background:#FAFBFF}
   <div class="modal">
     <div class="modal-title" id="modalNegociantTitle">Ajouter une agence négociant</div>
     <div class="form-group">
-      <label class="form-lbl">Entité</label>
-      <input class="form-in" id="negAgence" type="text" placeholder="ex : UNIKALO Charente" oninput="checkNegAgenceDuplicate()">
-      <div class="form-hint" id="negAgenceHint" style="display:none;color:var(--red)">⚠️ Ce nom est déjà utilisé par une autre agence — la connexion se fait par ce nom exact, deux agences identiques rendraient l'une injoignable. Utilisez un nom distinct (ex : ajoutez le nom de l'agence) si c'est un autre établissement du même groupe.</div>
+      <label class="form-lbl">Nom de l'agence</label>
+      <input class="form-in" id="negVille" type="text" placeholder="ex : UNIKALO Charente Mérignac" oninput="checkNegAgenceDuplicate()">
+      <div class="form-hint">Un nom libre qui identifie clairement cette agence — la connexion se fait par ce nom exact. Si plusieurs agences appartiennent au même groupe, incluez la ville pour les distinguer (ex : "UNIKALO Charente Mérignac").</div>
+      <div class="form-hint" id="negAgenceHint" style="display:none;color:var(--red)">⚠️ Ce nom est déjà utilisé par une autre agence — la connexion se fait par ce nom exact, deux agences identiques rendraient l'une injoignable. Utilisez un nom distinct (ex : ajoutez la ville) si c'est un autre établissement du même groupe.</div>
     </div>
     <div class="form-group" id="negSiretGroup">
       <label class="form-lbl">Numéro SIRET</label>
       <input class="form-in" id="negSiret" type="text" placeholder="123 456 789 00012" maxlength="17" inputmode="numeric">
-    </div>
-    <div class="form-group">
-      <label class="form-lbl">Nom de l'agence</label>
-      <input class="form-in" id="negVille" type="text" placeholder="ex : Mérignac">
-      <div class="form-hint">Le nom précis de cette agence (souvent sa ville) — utile pour distinguer plusieurs agences d'une même entité (établissements secondaires)</div>
     </div>
     <div class="form-group">
       <label class="form-lbl">Département</label>
@@ -3238,7 +3234,7 @@ function renderNegociantsSection() {
     deptEl.dataset.filled = "1";
   }
   if (NEGOCIANTS.length === 0) {
-    body.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px">Aucune agence négociant — cliquez sur "+ Nouvelle agence"</td></tr>';
+    body.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">Aucune agence négociant — cliquez sur "+ Nouvelle agence"</td></tr>';
     return;
   }
   var searchEl = document.getElementById("negociantSearch");
@@ -3252,7 +3248,7 @@ function renderNegociantsSection() {
       || (n.ville||"").toLowerCase().indexOf(q) !== -1;
   });
   if (list.length === 0) {
-    body.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px">Aucune agence trouvée</td></tr>';
+    body.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">Aucune agence trouvée</td></tr>';
     return;
   }
   try {
@@ -3299,13 +3295,12 @@ function renderNegociantsSection() {
         '</td>'+
         '<td>'+esc(n.agence)+' '+statutPill+'</td>'+
         '<td>'+siretCell+'</td>'+
-        '<td>'+esc(n.ville||"—")+'</td>'+
         '<td>'+esc(n.departement||"—")+'</td>'+
         '<td>'+esc(n.email||"—")+'</td>'+
         '<td><code style="font-size:10px;word-break:break-all">'+esc(link)+'</code></td>'+
         '<td>'+
           validationBtns+
-          '<button class="btn-tbl" onclick="editNegociant(\''+uid+'\')" title="Renommer l\'entité / modifier le nom de l\'agence ou son département">✏️ Modifier</button>'+
+          '<button class="btn-tbl" onclick="editNegociant(\''+uid+'\')" title="Renommer l\'agence ou modifier son département">✏️ Modifier</button>'+
           '<button class="btn-tbl" onclick="copyNegociantLink(\''+escJsAttr(link)+'\')">📋 Copier</button>'+
           '<button class="btn-tbl" onclick="showNegoQR(\''+escJsAttr(link)+'\',\''+escJsAttr(n.agence)+'\')" title="QR + code-barres de connexion, à flasher pour ouvrir directement la page de l\'agence">🔲 QR</button>'+
           (n.email ? '<button class="btn-tbl" onclick="resetNegociantPassword(\''+escJsAttr(n.email)+'\',\''+escJsAttr(n.agence)+'\')" title="Envoyer un lien de réinitialisation du mot de passe">🔑 Réinitialiser</button>' : '')+
@@ -3394,41 +3389,47 @@ function copyNegociantLink(link) {
 // base dessus pour savoir quel chemin emprunter (create-negociant vs
 // update_negociant_infos).
 var editingNegociantId = null;
+// Valeur de "ville" déjà en base pour l'agence en cours d'édition — il n'y
+// a plus de champ visible pour la modifier (voir plus haut : le SIRET
+// n'étant pas revérifié en mode édition, on ne peut pas la redétecter).
+// On la renvoie donc inchangée à update_negociant_infos() pour ne pas
+// perdre cette info, utilisée par l'Historique des passages.
+var editingNegociantVille = "";
 
 function openAddNegociant() {
   editingNegociantId = null;
+  editingNegociantVille = "";
   document.getElementById("modalNegociantTitle").textContent = "Ajouter une agence négociant";
   document.getElementById("modalNegociantSaveBtn").textContent = "💾 Créer l'agence";
   document.getElementById("negSiretGroup").style.display = "";
   document.getElementById("negEmailGroup").style.display = "";
   document.getElementById("negPwdGroup").style.display = "";
-  document.getElementById("negAgence").value = "";
+  document.getElementById("negVille").value = "";
   document.getElementById("negAgenceHint").style.display = "none";
   document.getElementById("negSiret").value = "";
-  document.getElementById("negVille").value = "";
   document.getElementById("negDept").innerHTML = departementOptions("", false);
   document.getElementById("negEmail").value = "";
   document.getElementById("negPwd").value = "";
   document.getElementById("modalNegociant").classList.add("open");
 }
 
-// Ouvre le même modal en mode édition : seuls le nom d'agence, la ville
-// et le département sont modifiables (le SIRET, l'email et le mot de
-// passe ne passent pas par cette fonction — le mot de passe a déjà son
-// propre bouton "🔑 Réinitialiser"). Sert notamment à corriger un
-// doublon de nom d'agence (voir negoceid-102-unicite-agence.sql).
+// Ouvre le même modal en mode édition : seuls le nom d'agence et le
+// département sont modifiables (le SIRET, l'email et le mot de passe ne
+// passent pas par cette fonction — le mot de passe a déjà son propre
+// bouton "🔑 Réinitialiser"). Sert notamment à corriger un doublon de nom
+// d'agence (voir negoceid-102-unicite-agence.sql).
 function editNegociant(authUserId) {
   var n = (NEGOCIANTS || []).find(function(x){ return x.auth_user_id === authUserId; });
   if (!n) { alert("Agence introuvable."); return; }
   editingNegociantId = authUserId;
+  editingNegociantVille = n.ville || "";
   document.getElementById("modalNegociantTitle").textContent = "Modifier l'agence";
   document.getElementById("modalNegociantSaveBtn").textContent = "💾 Enregistrer";
   document.getElementById("negSiretGroup").style.display = "none";
   document.getElementById("negEmailGroup").style.display = "none";
   document.getElementById("negPwdGroup").style.display = "none";
-  document.getElementById("negAgence").value = n.agence || "";
+  document.getElementById("negVille").value = n.agence || "";
   document.getElementById("negAgenceHint").style.display = "none";
-  document.getElementById("negVille").value = n.ville || "";
   document.getElementById("negDept").innerHTML = departementOptions(n.departement || "", false);
   document.getElementById("modalNegociant").classList.add("open");
 }
@@ -3440,7 +3441,7 @@ function editNegociant(authUserId) {
 // + la contrainte d'unicité côté base, voir negoceid-102).
 function checkNegAgenceDuplicate() {
   var hint = document.getElementById("negAgenceHint");
-  var val = document.getElementById("negAgence").value.trim().toLowerCase();
+  var val = document.getElementById("negVille").value.trim().toLowerCase();
   if (!val) { hint.style.display = "none"; return; }
   var dup = (NEGOCIANTS || []).some(function(n) {
     if (editingNegociantId && n.auth_user_id === editingNegociantId) return false; // soi-même
@@ -3451,9 +3452,8 @@ function checkNegAgenceDuplicate() {
 
 async function saveNegociant() {
   if (editingNegociantId) { return saveNegociantEdit(); }
-  var agence = document.getElementById("negAgence").value.trim();
+  var agence = document.getElementById("negVille").value.trim();
   var siret = normalizeSiret(document.getElementById("negSiret").value);
-  var ville = document.getElementById("negVille").value.trim();
   var departement = document.getElementById("negDept").value;
   var email = document.getElementById("negEmail").value.trim();
   var pwd = document.getElementById("negPwd").value;
@@ -3464,10 +3464,14 @@ async function saveNegociant() {
   if (btn) { btn.disabled = true; btn.textContent = "Création..."; }
   try {
     var { data: { session } } = await supabase.auth.getSession();
+    // "ville" n'est plus saisie à la main : create-negociant la déduit
+    // automatiquement du SIRET côté serveur si elle est absente (voir
+    // finalVille dans l'edge function) — purement informatif, pour
+    // l'Historique des passages, sans jamais bloquer la création.
     var res = await fetch(SUPABASE_URL + "/functions/v1/create-negociant", {
       method: "POST",
       headers: { "Authorization": "Bearer " + session.access_token, "Content-Type": "application/json" },
-      body: JSON.stringify({ agence: agence, siret: siret, ville: ville, departement: departement, email: email, password: pwd })
+      body: JSON.stringify({ agence: agence, siret: siret, departement: departement, email: email, password: pwd })
     });
     var result = await res.json();
     if (btn) { btn.disabled = false; btn.textContent = "💾 Créer l'agence"; }
@@ -3482,22 +3486,21 @@ async function saveNegociant() {
   alert("✅ Agence créée !\n\nIdentifiants à transmettre :\nEmail : " + email + "\nMot de passe : " + pwd + "\n\nLien de connexion et QR / code-barres à flasher disponibles dans la liste des agences (bouton 🔲 QR).");
 }
 
-// Enregistre les modifications d'une agence existante (nom/ville/département)
+// Enregistre les modifications d'une agence existante (nom/département)
 // via la RPC update_negociant_infos — voir negoceid-102-unicite-agence.sql.
 // Utilisée notamment pour corriger un doublon de nom d'agence (deux
 // établissements du même groupe créés par erreur avec le même nom).
 async function saveNegociantEdit() {
-  var agence = document.getElementById("negAgence").value.trim();
-  var ville = document.getElementById("negVille").value.trim();
+  var agence = document.getElementById("negVille").value.trim();
   var departement = document.getElementById("negDept").value;
-  if (!agence) { alert("Le nom de l'entité est obligatoire."); return; }
+  if (!agence) { alert("Le nom de l'agence est obligatoire."); return; }
   var btn = document.getElementById("modalNegociantSaveBtn");
   if (btn) { btn.disabled = true; btn.textContent = "Enregistrement..."; }
   try {
     var { error } = await supabase.rpc('update_negociant_infos', {
       p_auth_user_id: editingNegociantId,
       p_agence: agence,
-      p_ville: ville,
+      p_ville: editingNegociantVille,
       p_departement: departement
     });
     if (btn) { btn.disabled = false; btn.textContent = "💾 Enregistrer"; }
