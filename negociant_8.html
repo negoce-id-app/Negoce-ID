@@ -729,6 +729,11 @@ async function loginNego() {
     // envoyer son logo dans SON propre dossier du bucket Storage.
     currentNegoAuthUserId = appUser ? appUser.auth_user_id : null;
     applyNegoBranding(appUser && appUser.logo_url, appUser && appUser.logo_texte);
+    // Affiche la ville à côté du nom d'agence dans l'en-tête : plusieurs
+    // agences d'un même groupe peuvent porter le même nom, la ville permet
+    // de les distinguer d'un coup d'œil une fois connecté.
+    var villeNego = appUser && appUser.ville ? String(appUser.ville).trim() : "";
+    document.getElementById("hdrNego").textContent = villeNego ? (nego + " — " + villeNego) : nego;
   } catch(e) { console.error("current_app_user error", e); }
 
   if (!appUserChecked) {
