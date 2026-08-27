@@ -2381,6 +2381,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);min-height:100vh}
 .pwd-eye{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:6px;line-height:1;display:flex;align-items:center;justify-content:center;color:#6b7280}
 .pwd-eye:hover{color:#374151}
 .form-in:focus{outline:none;border-color:var(--orange)}
+.form-hint{font-size:11px;color:var(--muted);margin-top:5px}
 .btn-login{width:100%;padding:14px;background:var(--orange);color:white;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;margin-top:8px}
 .login-err{background:#FEE;color:#C62828;border-radius:8px;padding:10px;font-size:13px;margin-top:10px;display:none}
 
@@ -2728,7 +2729,7 @@ tr:hover td{background:#FAFBFF}
         <select class="filter-select" id="negociantDeptFilter" style="max-width:220px" onchange="renderNegociantsSection()"></select>
       </div>
       <div class="table-scroll"><table>
-        <thead><tr><th>Logo</th><th>Agence</th><th>SIRET / nom officiel</th><th>Département</th><th>Email</th><th>Lien de connexion</th><th>Action</th></tr></thead>
+        <thead><tr><th>Logo</th><th>Agence</th><th>SIRET / nom officiel</th><th>Ville</th><th>Département</th><th>Email</th><th>Lien de connexion</th><th>Action</th></tr></thead>
         <tbody id="negociantsBody"><tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">⏳ Chargement...</td></tr></tbody>
       </table></div>
     </div>
@@ -2903,6 +2904,11 @@ tr:hover td{background:#FAFBFF}
     <div class="form-group">
       <label class="form-lbl">Numéro SIRET</label>
       <input class="form-in" id="negSiret" type="text" placeholder="123 456 789 00012" maxlength="17" inputmode="numeric">
+    </div>
+    <div class="form-group">
+      <label class="form-lbl">Ville</label>
+      <input class="form-in" id="negVille" type="text" placeholder="ex : Lyon">
+      <div class="form-hint">Utile pour distinguer plusieurs agences d'un même SIREN (établissements secondaires)</div>
     </div>
     <div class="form-group">
       <label class="form-lbl">Département</label>
@@ -3223,7 +3229,7 @@ function renderNegociantsSection() {
     deptEl.dataset.filled = "1";
   }
   if (NEGOCIANTS.length === 0) {
-    body.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">Aucune agence négociant — cliquez sur "+ Nouvelle agence"</td></tr>';
+    body.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px">Aucune agence négociant — cliquez sur "+ Nouvelle agence"</td></tr>';
     return;
   }
   var searchEl = document.getElementById("negociantSearch");
@@ -3233,10 +3239,11 @@ function renderNegociantsSection() {
     if (deptQ && n.departement !== deptQ) return false;
     if (!q) return true;
     return (n.agence||"").toLowerCase().indexOf(q) !== -1
-      || (n.email||"").toLowerCase().indexOf(q) !== -1;
+      || (n.email||"").toLowerCase().indexOf(q) !== -1
+      || (n.ville||"").toLowerCase().indexOf(q) !== -1;
   });
   if (list.length === 0) {
-    body.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">Aucune agence trouvée</td></tr>';
+    body.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px">Aucune agence trouvée</td></tr>';
     return;
   }
   try {
@@ -3283,12 +3290,14 @@ function renderNegociantsSection() {
         '</td>'+
         '<td>'+esc(n.agence)+' '+statutPill+'</td>'+
         '<td>'+siretCell+'</td>'+
+        '<td>'+esc(n.ville||"—")+'</td>'+
         '<td>'+esc(n.departement||"—")+'</td>'+
         '<td>'+esc(n.email||"—")+'</td>'+
         '<td><code style="font-size:10px;word-break:break-all">'+esc(link)+'</code></td>'+
         '<td>'+
           validationBtns+
           '<button class="btn-tbl" onclick="copyNegociantLink(\''+escJsAttr(link)+'\')">📋 Copier</button>'+
+          '<button class="btn-tbl" onclick="showNegoQR(\''+escJsAttr(link)+'\',\''+escJsAttr(n.agence)+'\')" title="QR + code-barres de connexion, à flasher pour ouvrir directement la page de l\'agence">🔲 QR</button>'+
           (n.email ? '<button class="btn-tbl" onclick="resetNegociantPassword(\''+escJsAttr(n.email)+'\',\''+escJsAttr(n.agence)+'\')" title="Envoyer un lien de réinitialisation du mot de passe">🔑 Réinitialiser</button>' : '')+
           '<button class="btn-tbl danger" onclick="deleteNegociant(\''+uid+'\',\''+escJsAttr(n.agence)+'\')" title="Supprimer définitivement">🗑️</button>'+
         '</td>'+
@@ -3373,6 +3382,7 @@ function copyNegociantLink(link) {
 function openAddNegociant() {
   document.getElementById("negAgence").value = "";
   document.getElementById("negSiret").value = "";
+  document.getElementById("negVille").value = "";
   document.getElementById("negDept").innerHTML = departementOptions("", false);
   document.getElementById("negEmail").value = "";
   document.getElementById("negPwd").value = "";
@@ -3382,6 +3392,7 @@ function openAddNegociant() {
 async function saveNegociant() {
   var agence = document.getElementById("negAgence").value.trim();
   var siret = normalizeSiret(document.getElementById("negSiret").value);
+  var ville = document.getElementById("negVille").value.trim();
   var departement = document.getElementById("negDept").value;
   var email = document.getElementById("negEmail").value.trim();
   var pwd = document.getElementById("negPwd").value;
@@ -3395,7 +3406,7 @@ async function saveNegociant() {
     var res = await fetch(SUPABASE_URL + "/functions/v1/create-negociant", {
       method: "POST",
       headers: { "Authorization": "Bearer " + session.access_token, "Content-Type": "application/json" },
-      body: JSON.stringify({ agence: agence, siret: siret, departement: departement, email: email, password: pwd })
+      body: JSON.stringify({ agence: agence, siret: siret, ville: ville, departement: departement, email: email, password: pwd })
     });
     var result = await res.json();
     if (btn) { btn.disabled = false; btn.textContent = "💾 Créer l'agence"; }
@@ -3407,7 +3418,7 @@ async function saveNegociant() {
   }
   closeModal("modalNegociant");
   loadNegociants();
-  alert("✅ Agence créée !\n\nIdentifiants à transmettre :\nEmail : " + email + "\nMot de passe : " + pwd + "\n\nLien de connexion copié dans la liste des agences.");
+  alert("✅ Agence créée !\n\nIdentifiants à transmettre :\nEmail : " + email + "\nMot de passe : " + pwd + "\n\nLien de connexion et QR / code-barres à flasher disponibles dans la liste des agences (bouton 🔲 QR).");
 }
 
 function renderCompaniesSection() {
@@ -4944,6 +4955,22 @@ function showQR(code) {
   // (pas comme argument JS dans un onclick), donc l'échappement HTML classique
   // suffit à empêcher toute injection de balise (<script>, <img onerror=...>).
   w.document.write('<html><body style="margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif;background:#F5F6F8;padding:20px"><img src="'+qrUrl+'" style="width:200px;border-radius:12px">'+(barcodeUrl ? '<img src="'+barcodeUrl+'" style="width:280px;margin-top:14px;background:#fff;padding:8px;border-radius:8px">' : '')+'<p style="margin-top:12px;font-size:14px;font-weight:700;color:#10203D">'+esc(code)+'</p><button onclick="window.print()" style="margin-top:12px;padding:10px 20px;background:#FF6A1A;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:700">🖨️ Imprimer</button></body></html>');
+}
+
+// QR + code-barres de connexion pour une agence négociant : encode le
+// lien "?nego=..." (déjà utilisé dans l'e-mail de bienvenue et le bouton
+// "Copier"), pour que l'agence puisse le flasher au moment de sa première
+// connexion et arriver directement sur sa page, agence déjà pré-remplie.
+// Même principe que showQR() pour les salariés : QR (caméra téléphone,
+// ouvre le lien directement) + code-barres Code128 en secours pour les
+// douchettes USB qui ne lisent pas les QR — voir barcodeDataUrl() plus
+// haut. Le code-barres encode ici une URL complète (plus longue qu'un
+// simple code salarié) : il sera donc mécaniquement plus large à l'écran.
+function showNegoQR(link, agence) {
+  var qrUrl = qrDataUrl(link, 6);
+  var barcodeUrl = barcodeDataUrl(link);
+  var w = window.open("","_blank","width=380,height=560");
+  w.document.write('<html><body style="margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif;background:#F5F6F8;padding:20px;text-align:center"><img src="'+qrUrl+'" style="width:220px;border-radius:12px">'+(barcodeUrl ? '<img src="'+barcodeUrl+'" style="max-width:320px;margin-top:14px;background:#fff;padding:8px;border-radius:8px">' : '')+'<p style="margin-top:14px;font-size:15px;font-weight:700;color:#10203D">'+esc(agence)+'</p><p style="margin-top:2px;font-size:11px;color:#667085">À flasher pour ouvrir directement la page de connexion de l’agence</p><button onclick="window.print()" style="margin-top:14px;padding:10px 20px;background:#FF6A1A;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:700">🖨️ Imprimer</button></body></html>');
 }
 
 function showQRInModal(code) {
