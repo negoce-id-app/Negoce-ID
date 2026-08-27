@@ -2896,12 +2896,13 @@ tr:hover td{background:#FAFBFF}
 <!-- MODAL NÉGOCIANT -->
 <div class="modal-bg" id="modalNegociant">
   <div class="modal">
-    <div class="modal-title">Ajouter une agence négociant</div>
+    <div class="modal-title" id="modalNegociantTitle">Ajouter une agence négociant</div>
     <div class="form-group">
       <label class="form-lbl">Nom de l'agence</label>
-      <input class="form-in" id="negAgence" type="text" placeholder="Nom de l'agence">
+      <input class="form-in" id="negAgence" type="text" placeholder="Nom de l'agence" oninput="checkNegAgenceDuplicate()">
+      <div class="form-hint" id="negAgenceHint" style="display:none;color:var(--red)">⚠️ Ce nom est déjà utilisé par une autre agence — la connexion se fait par ce nom exact, deux agences identiques rendraient l'une injoignable. Utilisez un nom distinct (ex : ajoutez la ville) si c'est un autre établissement du même groupe.</div>
     </div>
-    <div class="form-group">
+    <div class="form-group" id="negSiretGroup">
       <label class="form-lbl">Numéro SIRET</label>
       <input class="form-in" id="negSiret" type="text" placeholder="123 456 789 00012" maxlength="17" inputmode="numeric">
     </div>
@@ -2914,17 +2915,17 @@ tr:hover td{background:#FAFBFF}
       <label class="form-lbl">Département</label>
       <select class="form-in" id="negDept"></select>
     </div>
-    <div class="form-group">
+    <div class="form-group" id="negEmailGroup">
       <label class="form-lbl">Email de connexion</label>
       <input class="form-in" id="negEmail" type="email" placeholder="agence@exemple.fr">
     </div>
-    <div class="form-group">
+    <div class="form-group" id="negPwdGroup">
       <label class="form-lbl">Mot de passe / code d'accès</label>
       <input class="form-in" id="negPwd" type="text" placeholder="Mot de passe temporaire">
     </div>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeModal('modalNegociant')">Annuler</button>
-      <button class="btn-save" onclick="saveNegociant()">💾 Créer l'agence</button>
+      <button class="btn-save" id="modalNegociantSaveBtn" onclick="saveNegociant()">💾 Créer l'agence</button>
     </div>
   </div>
 </div>
@@ -3296,6 +3297,7 @@ function renderNegociantsSection() {
         '<td><code style="font-size:10px;word-break:break-all">'+esc(link)+'</code></td>'+
         '<td>'+
           validationBtns+
+          '<button class="btn-tbl" onclick="editNegociant(\''+uid+'\')" title="Renommer l\'agence / modifier sa ville ou son département">✏️ Modifier</button>'+
           '<button class="btn-tbl" onclick="copyNegociantLink(\''+escJsAttr(link)+'\')">📋 Copier</button>'+
           '<button class="btn-tbl" onclick="showNegoQR(\''+escJsAttr(link)+'\',\''+escJsAttr(n.agence)+'\')" title="QR + code-barres de connexion, à flasher pour ouvrir directement la page de l\'agence">🔲 QR</button>'+
           (n.email ? '<button class="btn-tbl" onclick="resetNegociantPassword(\''+escJsAttr(n.email)+'\',\''+escJsAttr(n.agence)+'\')" title="Envoyer un lien de réinitialisation du mot de passe">🔑 Réinitialiser</button>' : '')+
@@ -3379,8 +3381,21 @@ function copyNegociantLink(link) {
   }
 }
 
+// Rempli en mode édition (editNegociant) avec l'auth_user_id de l'agence
+// modifiée ; reste à null en mode création normale. saveNegociant() se
+// base dessus pour savoir quel chemin emprunter (create-negociant vs
+// update_negociant_infos).
+var editingNegociantId = null;
+
 function openAddNegociant() {
+  editingNegociantId = null;
+  document.getElementById("modalNegociantTitle").textContent = "Ajouter une agence négociant";
+  document.getElementById("modalNegociantSaveBtn").textContent = "💾 Créer l'agence";
+  document.getElementById("negSiretGroup").style.display = "";
+  document.getElementById("negEmailGroup").style.display = "";
+  document.getElementById("negPwdGroup").style.display = "";
   document.getElementById("negAgence").value = "";
+  document.getElementById("negAgenceHint").style.display = "none";
   document.getElementById("negSiret").value = "";
   document.getElementById("negVille").value = "";
   document.getElementById("negDept").innerHTML = departementOptions("", false);
@@ -3389,7 +3404,45 @@ function openAddNegociant() {
   document.getElementById("modalNegociant").classList.add("open");
 }
 
+// Ouvre le même modal en mode édition : seuls le nom d'agence, la ville
+// et le département sont modifiables (le SIRET, l'email et le mot de
+// passe ne passent pas par cette fonction — le mot de passe a déjà son
+// propre bouton "🔑 Réinitialiser"). Sert notamment à corriger un
+// doublon de nom d'agence (voir negoceid-102-unicite-agence.sql).
+function editNegociant(authUserId) {
+  var n = (NEGOCIANTS || []).find(function(x){ return x.auth_user_id === authUserId; });
+  if (!n) { alert("Agence introuvable."); return; }
+  editingNegociantId = authUserId;
+  document.getElementById("modalNegociantTitle").textContent = "Modifier l'agence";
+  document.getElementById("modalNegociantSaveBtn").textContent = "💾 Enregistrer";
+  document.getElementById("negSiretGroup").style.display = "none";
+  document.getElementById("negEmailGroup").style.display = "none";
+  document.getElementById("negPwdGroup").style.display = "none";
+  document.getElementById("negAgence").value = n.agence || "";
+  document.getElementById("negAgenceHint").style.display = "none";
+  document.getElementById("negVille").value = n.ville || "";
+  document.getElementById("negDept").innerHTML = departementOptions(n.departement || "", false);
+  document.getElementById("modalNegociant").classList.add("open");
+}
+
+// Avertit en direct si le nom saisi correspond déjà à une autre agence
+// (comparaison insensible à la casse/espaces) — la connexion négociant
+// se fait par ce nom exact, donc un doublon rendrait l'une des deux
+// agences injoignable au login (bug réel corrigé par cette vérification
+// + la contrainte d'unicité côté base, voir negoceid-102).
+function checkNegAgenceDuplicate() {
+  var hint = document.getElementById("negAgenceHint");
+  var val = document.getElementById("negAgence").value.trim().toLowerCase();
+  if (!val) { hint.style.display = "none"; return; }
+  var dup = (NEGOCIANTS || []).some(function(n) {
+    if (editingNegociantId && n.auth_user_id === editingNegociantId) return false; // soi-même
+    return (n.agence || "").trim().toLowerCase() === val;
+  });
+  hint.style.display = dup ? "block" : "none";
+}
+
 async function saveNegociant() {
+  if (editingNegociantId) { return saveNegociantEdit(); }
   var agence = document.getElementById("negAgence").value.trim();
   var siret = normalizeSiret(document.getElementById("negSiret").value);
   var ville = document.getElementById("negVille").value.trim();
@@ -3399,7 +3452,7 @@ async function saveNegociant() {
   if (!agence || !siret || !email || !pwd) { alert("Tous les champs sont obligatoires (y compris le SIRET)."); return; }
   if (!isValidSiret(siret)) { alert("❌ Le numéro SIRET doit contenir 14 chiffres."); return; }
   if (pwd.length < 8) { alert("❌ Le mot de passe doit faire au moins 8 caractères."); return; }
-  var btn = document.querySelector('#modalNegociant .btn-save');
+  var btn = document.getElementById("modalNegociantSaveBtn");
   if (btn) { btn.disabled = true; btn.textContent = "Création..."; }
   try {
     var { data: { session } } = await supabase.auth.getSession();
@@ -3419,6 +3472,36 @@ async function saveNegociant() {
   closeModal("modalNegociant");
   loadNegociants();
   alert("✅ Agence créée !\n\nIdentifiants à transmettre :\nEmail : " + email + "\nMot de passe : " + pwd + "\n\nLien de connexion et QR / code-barres à flasher disponibles dans la liste des agences (bouton 🔲 QR).");
+}
+
+// Enregistre les modifications d'une agence existante (nom/ville/département)
+// via la RPC update_negociant_infos — voir negoceid-102-unicite-agence.sql.
+// Utilisée notamment pour corriger un doublon de nom d'agence (deux
+// établissements du même groupe créés par erreur avec le même nom).
+async function saveNegociantEdit() {
+  var agence = document.getElementById("negAgence").value.trim();
+  var ville = document.getElementById("negVille").value.trim();
+  var departement = document.getElementById("negDept").value;
+  if (!agence) { alert("Le nom de l'agence est obligatoire."); return; }
+  var btn = document.getElementById("modalNegociantSaveBtn");
+  if (btn) { btn.disabled = true; btn.textContent = "Enregistrement..."; }
+  try {
+    var { error } = await supabase.rpc('update_negociant_infos', {
+      p_auth_user_id: editingNegociantId,
+      p_agence: agence,
+      p_ville: ville,
+      p_departement: departement
+    });
+    if (btn) { btn.disabled = false; btn.textContent = "💾 Enregistrer"; }
+    if (error) { alert("❌ Échec :\n" + frError(error)); return; }
+  } catch(e) {
+    if (btn) { btn.disabled = false; btn.textContent = "💾 Enregistrer"; }
+    alert("❌ Erreur : " + frError(e));
+    return;
+  }
+  closeModal("modalNegociant");
+  editingNegociantId = null;
+  loadNegociants();
 }
 
 function renderCompaniesSection() {
