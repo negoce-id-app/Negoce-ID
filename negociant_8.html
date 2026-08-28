@@ -368,14 +368,15 @@ body{font-family:'Inter',sans-serif;background:var(--bg);display:flex;flex-direc
       <div style="margin-top:14px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
           <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.8px">🔢 N° de votre bon de livraison</div>
-          <div class="bl-optional" style="background:rgba(255,255,255,0.12);color:rgba(255,255,255,0.6)">Facultatif</div>
+          <div class="bl-optional" style="background:rgba(229,57,53,0.28);color:#FFB4B0">Obligatoire</div>
         </div>
-        <!-- Facultatif, saisi à la main uniquement si le négociant veut relier
-             ce passage à SON propre numéro de BL (compta/logiciel de caisse).
-             Ne pas confondre avec le "N° de suivi" affiché automatiquement une
-             fois le retrait validé plus bas (numero_suivi, généré par
-             NégoceID, sans aucune saisie) — voir negoceid-107. -->
-        <input class="bl-input" id="bonLivraisonInput" type="text" placeholder="ex : votre numéro de BL (optionnel)" autocomplete="off" autocorrect="off" spellcheck="false" onfocus="cancelAutoReset()">
+        <!-- Obligatoire : saisi à la main pour relier ce passage à SON propre
+             numéro de BL (compta/logiciel de caisse). Ne pas confondre avec
+             le "N° de suivi" affiché automatiquement une fois le retrait
+             validé plus bas (numero_suivi, généré par NégoceID, sans
+             aucune saisie) — voir negoceid-107. -->
+        <input class="bl-input" id="bonLivraisonInput" type="text" placeholder="ex : votre numéro de BL" autocomplete="off" autocorrect="off" spellcheck="false" onfocus="cancelAutoReset()" oninput="document.getElementById('bonLivraisonErr').style.display='none'">
+        <div class="err" id="bonLivraisonErr" style="display:none;margin-top:8px;max-width:none">❌ Renseignez le numéro de votre bon de livraison avant de valider le retrait</div>
       </div>
       <div style="margin-top:14px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
@@ -1290,6 +1291,8 @@ async function showResult(code, pin) {
   window._currentAuthorizedChantiers = (user && Array.isArray(user.chantiers)) ? user.chantiers : [];
   renderChantierField(window._currentAuthorizedChantiers);
   document.getElementById("chantierErr").style.display = "none";
+  var bonLivraisonErrEl0 = document.getElementById("bonLivraisonErr");
+  if (bonLivraisonErrEl0) bonLivraisonErrEl0.style.display = "none";
   document.getElementById("blSaved").style.display = "none";
   // Le passage n'est présenté comme confirmé qu'une fois un chantier autorisé validé (saveBL)
   document.getElementById("savedCard").style.display = "none";
@@ -1350,11 +1353,17 @@ async function saveBL() {
   var bonLivraison = bonLivraisonEl ? bonLivraisonEl.value.trim() : "";
   var chantier = document.getElementById("chantierInput").value.trim();
   var errEl = document.getElementById("chantierErr");
+  var bonLivraisonErrEl = document.getElementById("bonLivraisonErr");
   errEl.style.display = "none";
+  if (bonLivraisonErrEl) bonLivraisonErrEl.style.display = "none";
 
   if (!chantier) {
     errEl.textContent = "❌ Sélectionnez un chantier autorisé avant de valider le retrait";
     errEl.style.display = "block";
+    return;
+  }
+  if (!bonLivraison) {
+    if (bonLivraisonErrEl) bonLivraisonErrEl.style.display = "block";
     return;
   }
   if (!currentPassageId) {
