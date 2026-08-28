@@ -57,11 +57,19 @@ img,svg{display:block}
 .nav-right .btn-orange{padding:11px 22px;box-shadow:none}
 .nav-login{font-size:14px;font-weight:700;color:var(--muted);white-space:nowrap}
 .nav-login:hover{color:var(--dark)}
+.nav-burger{display:none;flex-direction:column;justify-content:center;gap:5px;width:34px;height:34px;background:none;border:none;cursor:pointer;padding:0;flex-shrink:0}
+.nav-burger span{display:block;width:100%;height:2.5px;background:var(--dark);border-radius:2px}
+.nav-mobile-panel{display:none;flex-direction:column;gap:2px;max-width:1240px;margin:0 auto;padding:10px 24px 18px;border-top:1px solid var(--line)}
+.nav-mobile-panel a{padding:12px 4px;font-size:15px;font-weight:700;color:var(--dark);border-bottom:1px solid var(--line)}
+.nav-mobile-panel a.active{color:var(--orange)}
+.nav-mobile-panel a:last-child{border-bottom:none}
 @media(max-width:1150px){
   .nav-negociant-link{display:none}
 }
 @media(max-width:900px){
   .nav-link{display:none}
+  .nav-burger{display:flex}
+  .nav.open .nav-mobile-panel{display:flex}
 }
 
 /* ===== HERO ===== */
@@ -190,7 +198,7 @@ footer{background:var(--navy);color:#9BA6BE;padding:44px 0 26px}
 <body>
 
 <!-- ===== NAV ===== -->
-<div class="nav">
+<div class="nav" id="siteNav">
   <div class="wrap">
     <a class="brand" href="#top">
       <div class="brand-row">
@@ -208,9 +216,32 @@ footer{background:var(--navy);color:#9BA6BE;padding:44px 0 26px}
       <a class="nav-login nav-negociant-link" href="inscription-negociant.html">Vous êtes négociant ?</a>
       <a class="nav-login" href="admin-supabase-final.html">Connexion</a>
       <a class="btn btn-orange" href="inscription.html">Créer mon compte</a>
+      <button class="nav-burger" id="navBurger" onclick="toggleNavMobile()" aria-label="Menu" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
     </div>
   </div>
+  <div class="nav-mobile-panel" id="navMobilePanel">
+    <a href="#top" class="active" onclick="closeNavMobile()">Accueil</a>
+    <a href="#comment" onclick="closeNavMobile()">Solution</a>
+    <a href="#stats" onclick="closeNavMobile()">Fonctionnalités</a>
+    <a href="#audiences" onclick="closeNavMobile()">Pour qui ?</a>
+    <a href="#tarifs" onclick="closeNavMobile()">Tarifs</a>
+    <a href="inscription-negociant.html">Vous êtes négociant ?</a>
+    <a href="admin-supabase-final.html">Connexion</a>
+  </div>
 </div>
+<script>
+function toggleNavMobile(){
+  var nav = document.getElementById('siteNav');
+  var open = nav.classList.toggle('open');
+  document.getElementById('navBurger').setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+function closeNavMobile(){
+  document.getElementById('siteNav').classList.remove('open');
+  document.getElementById('navBurger').setAttribute('aria-expanded', 'false');
+}
+</script>
 
 <!-- ===== HERO ===== -->
 <div class="hero" id="top">
