@@ -367,6 +367,18 @@ body{font-family:'Inter',sans-serif;background:var(--bg);display:flex;flex-direc
       <div class="err" id="chantierErr" style="display:none;margin-top:8px;max-width:none">❌ Sélectionnez un chantier autorisé avant de valider le retrait</div>
       <div style="margin-top:14px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.8px">🔢 N° de votre bon de livraison</div>
+          <div class="bl-optional" style="background:rgba(255,255,255,0.12);color:rgba(255,255,255,0.6)">Facultatif</div>
+        </div>
+        <!-- Facultatif, saisi à la main uniquement si le négociant veut relier
+             ce passage à SON propre numéro de BL (compta/logiciel de caisse).
+             Ne pas confondre avec le "N° de suivi" affiché automatiquement une
+             fois le retrait validé plus bas (numero_suivi, généré par
+             NégoceID, sans aucune saisie) — voir negoceid-107. -->
+        <input class="bl-input" id="bonLivraisonInput" type="text" placeholder="ex : votre numéro de BL (optionnel)" autocomplete="off" autocorrect="off" spellcheck="false" onfocus="cancelAutoReset()">
+      </div>
+      <div style="margin-top:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
           <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.8px">📎 Document du bon de livraison</div>
           <div class="bl-optional" style="background:rgba(212,168,67,0.28);color:#F5D98A">Fortement recommandé</div>
         </div>
@@ -380,6 +392,16 @@ body{font-family:'Inter',sans-serif;background:var(--bg);display:flex;flex-direc
         <div style="font-size:16px">✅</div>
         <div class="bl-saved-txt" id="blSavedTxt">Retrait validé</div>
       </div>
+    </div>
+    <!-- N° de suivi NégoceID : généré automatiquement par log_passage() dès
+         que le scan est autorisé (voir negoceid-107-numero-suivi-passages.sql)
+         — pas de saisie, croissant pour toute l'entreprise du salarié quel
+         que soit le négociant. Affiché dès le résultat du scan, avant même
+         la validation du chantier/BL ci-dessus. -->
+    <div class="bl-card" id="numeroSuiviCard" style="display:none;text-align:center">
+      <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.8px">🔢 N° de suivi NégoceID (automatique)</div>
+      <div id="numeroSuiviValue" style="font-size:26px;font-weight:800;letter-spacing:2px;color:#fff;margin-top:6px">—</div>
+      <div style="font-size:11px;color:rgba(255,255,255,0.6);margin-top:4px">À reporter sur le BL papier si besoin — continue chez tous les fournisseurs</div>
     </div>
     <div class="saved-card" id="savedCard" style="display:none">
       <div style="font-size:18px">✅</div>
@@ -1225,6 +1247,17 @@ async function showResult(code, pin) {
     vConfirmEl.style.display = "none";
   }
 
+  // N° de suivi NégoceID (essai negoceid-107) : généré automatiquement,
+  // aucune saisie. Affiché seulement si présent (fonction pas encore
+  // déployée = simplement absent du résultat, pas d'erreur).
+  var numeroSuiviCard = document.getElementById("numeroSuiviCard");
+  if (ok && row && row.numero_suivi) {
+    document.getElementById("numeroSuiviValue").textContent = "N° " + row.numero_suivi;
+    numeroSuiviCard.style.display = "block";
+  } else {
+    numeroSuiviCard.style.display = "none";
+  }
+
   document.getElementById("dCompany").textContent = companyName;
   document.getElementById("dName").textContent = user ? user.nom : "Inconnu";
   document.getElementById("dSub").textContent = user ? user.poste : "—";
@@ -1244,6 +1277,8 @@ async function showResult(code, pin) {
     : '<div style="font-size:13px;color:var(--red)">Aucun chantier autorisé</div>';
 
   document.getElementById("blCard").style.display = ok ? "block" : "none";
+  var bonLivraisonEl0 = document.getElementById("bonLivraisonInput");
+  if (bonLivraisonEl0) bonLivraisonEl0.value = "";
   var lienBlEl0 = document.getElementById("lienBlInput");
   if (lienBlEl0) lienBlEl0.value = "";
   var blFileStatusEl0 = document.getElementById("blFileStatus");
@@ -1311,6 +1346,8 @@ function renderChantierField(chantiers) {
 async function saveBL() {
   var lienBlEl = document.getElementById("lienBlInput");
   var lienBl = lienBlEl ? lienBlEl.value.trim() : "";
+  var bonLivraisonEl = document.getElementById("bonLivraisonInput");
+  var bonLivraison = bonLivraisonEl ? bonLivraisonEl.value.trim() : "";
   var chantier = document.getElementById("chantierInput").value.trim();
   var errEl = document.getElementById("chantierErr");
   errEl.style.display = "none";
@@ -1342,6 +1379,7 @@ async function saveBL() {
     var { data, error } = await supabase.rpc('validate_passage_chantier', {
       p_passage_id: currentPassageId,
       p_chantier: chantier,
+      p_bon_livraison: bonLivraison || null,
       p_lien_bl: lienBl || null
     });
     if (error) throw error;
@@ -1360,7 +1398,7 @@ async function saveBL() {
     return;
   }
 
-  var msg = "Chantier : " + chantier + (lienBl ? " · 📎 document joint" : "");
+  var msg = "Chantier : " + chantier + (bonLivraison ? " · BL " + bonLivraison : "") + (lienBl ? " · 📎 document joint" : "");
   document.getElementById("blSavedTxt").textContent = msg + " ✓";
   document.getElementById("blSaved").style.display = "flex";
   document.getElementById("savedCard").style.display = "flex";
@@ -1543,7 +1581,7 @@ function renderHistoList() {
         '<span style="font-family:monospace">'+esc(p.code_salarie)+'</span>'+
         '<span>'+(nomEntreprise?'🏢 '+esc(nomEntreprise):'—')+'</span>'+
         '<span>'+(p.chantier?'🏗️ '+esc(p.chantier):'—')+'</span>'+
-        '<span>'+(p.bon_livraison?'<span class="histo-bl">BL '+esc(p.bon_livraison)+'</span> ':'')+(ok ? lienBlHtml : '—')+'</span>'+
+        '<span>'+(p.numero_suivi?'<span class="histo-bl">N° '+esc(p.numero_suivi)+'</span> ':'')+(p.bon_livraison?'<span class="histo-bl">BL '+esc(p.bon_livraison)+'</span> ':'')+(ok ? lienBlHtml : '—')+'</span>'+
         '<span class="histo-result-desktop">'+resultBadge+'</span>'+
       '</div>'+
     '</div>';
