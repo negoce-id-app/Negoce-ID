@@ -2614,6 +2614,7 @@ tr:hover td{background:#FAFBFF}
       <div class="kpi"><div class="kpi-icon">📊</div><div class="kpi-val" id="kpiPass">—</div><div class="kpi-lbl">Passages total</div></div>
       <div class="kpi"><div class="kpi-icon">✅</div><div class="kpi-val" id="kpiOk" style="color:var(--green)">—</div><div class="kpi-lbl">Autorisés</div></div>
       <div class="kpi"><div class="kpi-icon">🚫</div><div class="kpi-val" id="kpiKo" style="color:var(--red)">—</div><div class="kpi-lbl">Refusés</div></div>
+      <div class="kpi"><div class="kpi-icon">🔢</div><div class="kpi-val" id="kpiNumeroSuivi">—</div><div class="kpi-lbl">Dernier N° de suivi</div></div>
     </div>
 
     <!-- SALARIÉS -->
@@ -2657,8 +2658,8 @@ tr:hover td{background:#FAFBFF}
         <button class="btn-action btn-outline" onclick="reinitialiserPeriodePassages()">✕ Réinitialiser</button>
       </div>
       <div class="table-scroll"><table>
-        <thead><tr><th>Date / Heure</th><th>Code</th><th>Salarié</th><th>Nom de l'agence</th><th>Chantier</th><th>Document</th><th>Résultat</th></tr></thead>
-        <tbody id="passagesBody"><tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">⏳ Chargement...</td></tr></tbody>
+        <thead><tr><th>Date / Heure</th><th>Code</th><th>Salarié</th><th>Nom de l'agence</th><th>Chantier</th><th>N° de suivi</th><th>Document</th><th>Résultat</th></tr></thead>
+        <tbody id="passagesBody"><tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px">⏳ Chargement...</td></tr></tbody>
       </table></div>
     </div>
 
@@ -4380,6 +4381,12 @@ function renderAll() {
   document.getElementById("kpiPass").textContent = filteredPassages.length;
   document.getElementById("kpiOk").textContent = ok;
   document.getElementById("kpiKo").textContent = ko;
+  // Dernier N° de suivi : compteur continu par entreprise (voir
+  // negoceid-107-numero-suivi-passages.sql) — on prend le plus élevé
+  // parmi les passages affichés (respecte les mêmes filtres salarié/
+  // chantier/période que les autres KPI ci-dessus).
+  var numerosSuivi = filteredPassages.map(function(p){ return p.numero_suivi; }).filter(function(n){ return n != null; });
+  document.getElementById("kpiNumeroSuivi").textContent = numerosSuivi.length ? Math.max.apply(null, numerosSuivi) : "—";
 
   // Table salariés
   var sb = document.getElementById("salariesBody");
@@ -4424,7 +4431,7 @@ function renderAll() {
   // Table passages
   var pb = document.getElementById("passagesBody");
   if (filteredPassages.length === 0) {
-    pb.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">Aucun passage pour ce salarié</td></tr>';
+    pb.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px">Aucun passage pour ce salarié</td></tr>';
   } else {
     pb.innerHTML = filteredPassages.map(function(p) {
       var d = p.created_at ? new Date(p.created_at).toLocaleString("fr-FR") : "—";
@@ -4449,6 +4456,7 @@ function renderAll() {
         '<td>'+esc(p.nom_salarie)+'</td>'+
         '<td>'+agenceCell+'</td>'+
         '<td>'+(p.chantier?'<span style="font-size:12px;font-weight:600;color:var(--navy)">🏗️ '+esc(p.chantier)+'</span>':'<span style="color:var(--muted);font-size:11px">—</span>')+'</td>'+
+        '<td>'+(p.numero_suivi?'<code style="font-size:11px;font-weight:700;color:var(--navy)">N° '+esc(p.numero_suivi)+'</code>':'<span style="color:var(--muted);font-size:11px">—</span>')+'</td>'+
         '<td>'+blDocCell+'</td>'+
         '<td><span class="pill '+(p.resultat==="AUTORISE"?"pill-green":"pill-red")+'">'+esc(p.resultat)+'</span></td>'+
       '</tr>';
