@@ -752,11 +752,20 @@ async function loginNego() {
     // envoyer son logo dans SON propre dossier du bucket Storage.
     currentNegoAuthUserId = appUser ? appUser.auth_user_id : null;
     applyNegoBranding(appUser && appUser.logo_url, appUser && appUser.logo_texte);
+    // Remplace currentNego (jusqu'ici la casse telle que tapée à la
+    // connexion, ex. "UNIKALO..." même si enregistré "Unikalo...") par la
+    // valeur exacte enregistrée en base. Indispensable maintenant que la
+    // connexion accepte n'importe quelle casse (negoceid-108) : sans ça,
+    // les passages scannés seraient enregistrés avec une casse différente
+    // selon la façon dont l'agence tape son nom, et l'Historique ne
+    // retrouverait pas les passages faits sous une autre casse — comme si
+    // c'était deux agences différentes.
+    if (appUser && appUser.agence) { currentNego = appUser.agence; }
     // Affiche la ville à côté du nom d'agence dans l'en-tête : plusieurs
     // agences d'un même groupe peuvent porter le même nom, la ville permet
     // de les distinguer d'un coup d'œil une fois connecté.
     var villeNego = appUser && appUser.ville ? String(appUser.ville).trim() : "";
-    document.getElementById("hdrNego").textContent = villeNego ? (nego + " — " + villeNego) : nego;
+    document.getElementById("hdrNego").textContent = villeNego ? (currentNego + " — " + villeNego) : currentNego;
   } catch(e) { console.error("current_app_user error", e); }
 
   if (!appUserChecked) {
