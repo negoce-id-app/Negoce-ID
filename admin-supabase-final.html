@@ -2715,6 +2715,32 @@ tr:hover td{background:#FAFBFF}
         <tbody id="fournisseursBody"><tr><td colspan="3" style="text-align:center;color:var(--muted);padding:24px">⏳ Chargement...</td></tr></tbody>
       </table></div>
     </div>
+
+    <!-- SOUS-TRAITANTS -->
+    <div class="section">
+      <div class="section-hdr">
+        <div class="section-title">🧰 Sous-traitants autorisés</div>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:14px">
+        Autorisez une autre entreprise (déjà inscrite sur NégoceID — un compte "Indépendant" ou une entreprise classique) sur des chantiers précis des vôtres. Ses salariés verront alors ces chantiers s'ajouter à leur propre badge au moment du scan, chez n'importe quel négociant — sans qu'aucune fiche salarié ne soit créée chez vous.
+      </div>
+      <div class="filter-row">
+        <input class="filter-select" id="soustraitantSearchInput" type="text" placeholder="🔎 Chercher une entreprise par nom ou SIRET..." oninput="searchSousTraitantEntreprises()" style="flex:1;min-width:240px">
+      </div>
+      <div id="soustraitantSearchResults" style="display:none;margin-bottom:14px;border:2px solid var(--border);border-radius:10px;max-height:220px;overflow-y:auto"></div>
+      <div class="filter-row" id="soustraitantGrantRow" style="display:none">
+        <div style="flex:1;min-width:220px;font-size:13px;color:var(--navy);font-weight:700;align-self:center" id="soustraitantSelectedLabel"></div>
+        <select class="filter-select" id="soustraitantChantierSelect" style="flex:1;min-width:220px">
+          <option value="">Choisir un chantier à autoriser...</option>
+        </select>
+        <button class="btn-action btn-gold" onclick="addSousTraitantChantier()">+ Autoriser</button>
+        <button class="btn-action btn-outline" onclick="cancelSousTraitantSelection()">Annuler</button>
+      </div>
+      <div class="table-scroll"><table>
+        <thead><tr><th>Entreprise sous-traitante</th><th>Chantier autorisé</th><th>Action</th></tr></thead>
+        <tbody id="soustraitantsBody"><tr><td colspan="3" style="text-align:center;color:var(--muted);padding:24px">⏳ Chargement...</td></tr></tbody>
+      </table></div>
+    </div>
   </div>
 
   <!-- VUE : GESTION DES ENTREPRISES (super admin) -->
@@ -3196,6 +3222,17 @@ async function continueLoginAfterAuth() {
         document.getElementById("choosePlanText").textContent = "Choisissez votre formule pour donner accès à NégoceID à vos salariés.";
       }
       if (myComp.plan) document.getElementById("choosePlanSelect").value = myComp.plan;
+      // Compte "Indépendant" (sous-traitant auto-inscrit) : une seule
+      // formule a du sens (1 utilisateur, lui-même) — on la force et on
+      // verrouille le choix plutôt que de laisser sélectionner une formule
+      // pensée pour une équipe.
+      if (myComp.est_sous_traitant) {
+        document.getElementById("choosePlanSelect").value = "solo";
+        document.getElementById("choosePlanSelect").disabled = true;
+        document.getElementById("choosePlanText").textContent = "Votre compte Indépendant est prêt — activez-le avec la formule Indépendant (1 utilisateur, vous-même).";
+      } else {
+        document.getElementById("choosePlanSelect").disabled = false;
+      }
       document.getElementById("choosePlanErr").style.display = "none";
       document.getElementById("screenChoosePlan").style.display = "flex";
       return;
@@ -3604,8 +3641,9 @@ function renderCompaniesSection() {
     }).join("");
     var planSelect = '<select class="filter-select" style="font-size:12px;padding:6px 8px;min-width:120px" onchange="updateCompanyPlan(\''+escJsAttr(c.id)+'\', this.value)">'+planOptions+'</select>';
     var siretCell = esc(c.siret||"—")+' <button class="btn-tbl" onclick="editCompanySiret(\''+escJsAttr(c.id)+'\')" title="Modifier le SIRET">✏️</button>';
+    var soustraitantTag = c.est_sous_traitant ? ' <span class="pill pill-gold" title="Compte Indépendant auto-inscrit (sous-traitant)">🧰 Indépendant</span>' : '';
     return '<tr>'+
-      '<td>'+esc(c.nom)+'</td>'+
+      '<td>'+esc(c.nom)+soustraitantTag+'</td>'+
       '<td>'+esc(c.email_admin||"—")+'</td>'+
       '<td>'+esc(c.prefix||"—")+'</td>'+
       '<td>'+siretCell+'</td>'+
@@ -3985,6 +4023,7 @@ function selectCompany(company) {
   loadData();
   subscribeToPassages();
   loadFournisseurs();
+  loadSousTraitants();
 }
 
 // ── FOURNISSEURS (liste de négociants proposée aux salariés pour l'écran "Demande") ──
@@ -4069,6 +4108,151 @@ async function removeFournisseur(id) {
     if (error) { alert("❌ Échec de la suppression :\n" + frError(error)); return; }
   } catch(e) { console.error("removeFournisseur error", e); alert("❌ Erreur :\n" + frError(e)); return; }
   loadFournisseurs();
+}
+
+// ── SOUS-TRAITANTS (autorisation d'une AUTRE entreprise sur des chantiers précis des miens) ──
+// Contrairement aux "Fournisseurs" (des négociants), ici on autorise une
+// entreprise cliente/indépendante — cette entreprise n'a rien à créer chez
+// elle : ses salariés voient le(s) chantier(s) accordé(s) s'ajouter
+// automatiquement à leur badge existant (voir migration 110, log_passage).
+var soustraitantSelected = null; // { id, nom }
+var chantiersConnusEntreprise = [];
+
+function isTousChantiersValueAdmin(c) {
+  var v = String(c).trim().toLowerCase();
+  return v.indexOf("tous") === 0 || v.indexOf("toutes") === 0;
+}
+
+// Reconstruit la liste des chantiers "connus" de l'entreprise courante à
+// partir des chantiers déjà saisis sur ses propres salariés — pas de
+// table dédiée aux chantiers dans NégoceID, c'est la même source que
+// partout ailleurs dans l'admin.
+function refreshChantiersConnusOptions() {
+  var set = {};
+  (salaries || []).forEach(function(s) {
+    (Array.isArray(s.chantiers) ? s.chantiers : []).forEach(function(c) {
+      var v = String(c).trim();
+      if (v && !isTousChantiersValueAdmin(v)) set[v] = true;
+    });
+  });
+  chantiersConnusEntreprise = Object.keys(set).sort();
+  var sel = document.getElementById("soustraitantChantierSelect");
+  if (sel) {
+    sel.innerHTML = '<option value="">Choisir un chantier à autoriser...</option>' +
+      chantiersConnusEntreprise.map(function(c){return '<option value="'+esc(c)+'">'+esc(c)+'</option>';}).join("");
+  }
+}
+
+var searchSousTraitantTimer = null;
+function searchSousTraitantEntreprises() {
+  clearTimeout(searchSousTraitantTimer);
+  var q = document.getElementById("soustraitantSearchInput").value.trim();
+  var resultsEl = document.getElementById("soustraitantSearchResults");
+  if (q.length < 2) { resultsEl.style.display = "none"; resultsEl.innerHTML = ""; return; }
+  searchSousTraitantTimer = setTimeout(async function() {
+    try {
+      var { data, error } = await supabase.rpc('search_entreprise_a_autoriser', { p_query: q });
+      if (error) throw error;
+      var list = (Array.isArray(data) ? data : []).filter(function(e){ return !currentCompany || e.id !== currentCompany.id; });
+      if (list.length === 0) {
+        resultsEl.innerHTML = '<div style="padding:12px;font-size:13px;color:var(--muted)">Aucune entreprise trouvée</div>';
+      } else {
+        resultsEl.innerHTML = list.map(function(e) {
+          var idJs = String(e.id).replace(/'/g, "\\'");
+          var nomJs = String(e.nom || "").replace(/'/g, "\\'");
+          return '<div style="padding:10px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--border)" onclick="selectSousTraitantEntreprise(\''+idJs+'\',\''+nomJs+'\')">'+
+            '<b>'+esc(e.nom)+'</b>'+(e.est_sous_traitant?' <span class="pill pill-gold" style="margin-left:6px">Indépendant</span>':'')+
+            (e.siret ? '<div style="color:var(--muted);font-size:11px;margin-top:2px">SIRET '+esc(e.siret)+'</div>' : '') +
+          '</div>';
+        }).join("");
+      }
+      resultsEl.style.display = "block";
+    } catch(e) {
+      console.error("searchSousTraitantEntreprises error", e);
+      resultsEl.innerHTML = '<div style="padding:12px;font-size:13px;color:var(--red)">⚠️ Erreur de recherche</div>';
+      resultsEl.style.display = "block";
+    }
+  }, 350);
+}
+
+function selectSousTraitantEntreprise(id, nom) {
+  soustraitantSelected = { id: id, nom: nom };
+  document.getElementById("soustraitantSearchResults").style.display = "none";
+  document.getElementById("soustraitantSearchInput").value = nom;
+  document.getElementById("soustraitantSelectedLabel").textContent = "→ " + nom;
+  document.getElementById("soustraitantGrantRow").style.display = "flex";
+}
+
+function cancelSousTraitantSelection() {
+  soustraitantSelected = null;
+  document.getElementById("soustraitantSearchInput").value = "";
+  document.getElementById("soustraitantGrantRow").style.display = "none";
+}
+
+async function addSousTraitantChantier() {
+  var chantier = document.getElementById("soustraitantChantierSelect").value;
+  if (!soustraitantSelected || !chantier || !currentCompany) { alert("Choisissez une entreprise et un chantier"); return; }
+  try {
+    var { error } = await supabase.from('sous_traitants_chantiers').insert({
+      entreprise_id: currentCompany.id,
+      sous_traitant_id: soustraitantSelected.id,
+      chantier: chantier
+    });
+    if (error) {
+      var friendly = error.message.indexOf("duplicate key") !== -1
+        ? "❌ Ce chantier est déjà autorisé pour cette entreprise."
+        : "❌ Échec de l'ajout :\n" + frError(error);
+      alert(friendly);
+      return;
+    }
+  } catch(e) { console.error("addSousTraitantChantier error", e); alert("❌ Erreur :\n" + frError(e)); return; }
+  cancelSousTraitantSelection();
+  loadSousTraitants();
+}
+
+async function loadSousTraitants() {
+  var body = document.getElementById("soustraitantsBody");
+  if (!body || !currentCompany) return;
+  body.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--muted);padding:24px">⏳ Chargement...</td></tr>';
+  try {
+    var { data, error } = await supabase
+      .from('sous_traitants_chantiers')
+      .select('id, sous_traitant_id, chantier')
+      .eq('entreprise_id', currentCompany.id)
+      .order('chantier');
+    if (error) throw error;
+    var list = Array.isArray(data) ? data : [];
+    if (list.length === 0) {
+      body.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--muted);padding:24px">Aucun sous-traitant autorisé pour l\'instant</td></tr>';
+      return;
+    }
+    var ids = Array.from(new Set(list.map(function(r){return r.sous_traitant_id;})));
+    var nomsMap = {};
+    if (ids.length) {
+      var { data: ents } = await supabase.rpc('get_entreprises_noms', { p_ids: ids });
+      (ents || []).forEach(function(e){ nomsMap[e.id] = e.nom; });
+    }
+    body.innerHTML = list.map(function(r) {
+      var nom = nomsMap[r.sous_traitant_id] || r.sous_traitant_id;
+      return '<tr>'+
+        '<td>'+esc(nom)+'</td>'+
+        '<td>'+esc(r.chantier)+'</td>'+
+        '<td><button class="btn-tbl danger" onclick="removeSousTraitantChantier('+r.id+')">🗑️ Retirer</button></td>'+
+      '</tr>';
+    }).join("");
+  } catch(e) {
+    console.error("loadSousTraitants error", e);
+    body.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--red);padding:24px">⚠️ Erreur de chargement</td></tr>';
+  }
+}
+
+async function removeSousTraitantChantier(id) {
+  if (!confirm("Retirer cette autorisation ?")) return;
+  try {
+    var { error } = await supabase.from('sous_traitants_chantiers').delete().eq('id', id);
+    if (error) { alert("❌ Échec de la suppression :\n" + frError(error)); return; }
+  } catch(e) { console.error("removeSousTraitantChantier error", e); alert("❌ Erreur :\n" + frError(e)); return; }
+  loadSousTraitants();
 }
 
 // ── TEMPS RÉEL ──
@@ -4402,6 +4586,7 @@ function getFilteredPassages() {
 }
 
 function renderAll() {
+  refreshChantiersConnusOptions();
   var filteredPassages = getFilteredPassages();
   var actifs = salaries.filter(function(s){return s.statut==="ACTIF";}).length;
   var ok = filteredPassages.filter(function(p){return p.resultat==="AUTORISE";}).length;

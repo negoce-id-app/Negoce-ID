@@ -1281,10 +1281,24 @@ async function showResult(code, pin) {
     else { document.getElementById("dPhotoImg").style.display = "none"; document.getElementById("dPhotoEmoji").style.display = "block"; }
   } catch(e) {}
 
+  // Chantiers "prêtés" par d'autres entreprises (sous-traitance, voir
+  // migration 110) : s'ajoutent aux chantiers propres du salarié, chacun
+  // étiqueté avec le nom de l'entreprise qui l'a accordé — pour qu'il n'y
+  // ait aucune ambiguïté sur qui est facturé au moment du retrait.
+  var chantiersExternes = (row && Array.isArray(row.chantiers_externes)) ? row.chantiers_externes : [];
+  window._currentChantiersExternes = chantiersExternes;
+  // user.chantiers vient de log_passage() et inclut déjà les chantiers
+  // "prêtés" (fusionnés côté serveur, voir migration 110) : on les retire
+  // ici pour ne pas les afficher deux fois, une fois sans étiquette et une
+  // fois avec.
+  var externeNamesDisplay = chantiersExternes.map(function(e){ return e.chantier; });
+  var chantiersPropresDisplay = (user && user.chantiers ? user.chantiers : []).filter(function(c){ return externeNamesDisplay.indexOf(c) === -1; });
+
   var ch = document.getElementById("dCh");
-  ch.innerHTML = user && user.chantiers && user.chantiers.length > 0
-    ? user.chantiers.map(function(c){return '<div class="ch-row"><div class="ch-dot"></div>'+esc(c)+'</div>';}).join("")
-    : '<div style="font-size:13px;color:var(--red)">Aucun chantier autorisé</div>';
+  var chRowsHtml = chantiersPropresDisplay.map(function(c){return '<div class="ch-row"><div class="ch-dot"></div>'+esc(c)+'</div>';})
+    .concat(chantiersExternes.map(function(e){return '<div class="ch-row"><div class="ch-dot"></div><b>['+esc(e.entreprise_nom)+']</b> '+esc(e.chantier)+'</div>';}))
+    .join("");
+  ch.innerHTML = chRowsHtml || '<div style="font-size:13px;color:var(--red)">Aucun chantier autorisé</div>';
 
   document.getElementById("blCard").style.display = ok ? "block" : "none";
   var bonLivraisonEl0 = document.getElementById("bonLivraisonInput");
@@ -1298,7 +1312,7 @@ async function showResult(code, pin) {
   var blFileBtnEl0 = document.getElementById("blFileBtn");
   if (blFileBtnEl0) { blFileBtnEl0.disabled = false; blFileBtnEl0.textContent = "📷 Prendre une photo ou joindre un fichier"; }
   window._currentAuthorizedChantiers = (user && Array.isArray(user.chantiers)) ? user.chantiers : [];
-  renderChantierField(window._currentAuthorizedChantiers);
+  renderChantierField(window._currentAuthorizedChantiers, window._currentChantiersExternes);
   document.getElementById("chantierErr").style.display = "none";
   var bonLivraisonErrEl0 = document.getElementById("bonLivraisonErr");
   if (bonLivraisonErrEl0) bonLivraisonErrEl0.style.display = "none";
@@ -1329,28 +1343,43 @@ function isTousChantiersValue(c) {
   return v.indexOf("tous") === 0 || v.indexOf("toutes") === 0;
 }
 
-// Construit le champ "Référence chantier". Deux cas :
-// - salarié autorisé sur des chantiers précis : liste déroulante strictement limitée
-//   à ces chantiers (aucune saisie libre possible, aucun contournement).
-// - salarié autorisé sur "Tous chantiers" : le champ reste une saisie libre
-//   (mais toujours obligatoire, voir saveBL), car il n'y a pas de liste fixe à proposer.
-function renderChantierField(chantiers) {
+// Construit le champ "Référence chantier". Trois ingrédients possibles :
+// - les chantiers PROPRES du salarié (liste déroulante limitée à ceux-ci) ;
+// - les chantiers "prêtés" par d'autres entreprises (sous-traitance, voir
+//   migration 110) : ajoutés à la même liste, étiquetés "[Entreprise] nom",
+//   avec l'id de l'entreprise posé en attribut data- pour que saveBL()
+//   sache à qui rattacher le passage une fois ce chantier choisi ;
+// - "Tous chantiers" (chantier propre uniquement) : champ en saisie libre.
+// "chantiers" ici vient de log_passage (déjà fusionné avec les chantiers
+// prêtés) : on retire de la liste "propre" ce qui est aussi dans
+// "externes" pour ne jamais l'afficher deux fois.
+function renderChantierField(chantiers, externes) {
   var wrap = document.getElementById("chantierFieldWrap");
   if (!wrap) return;
-  var list = Array.isArray(chantiers) ? chantiers : [];
+  var ext = Array.isArray(externes) ? externes : [];
+  var externeNames = ext.map(function(e){ return e.chantier; });
+  var list = (Array.isArray(chantiers) ? chantiers : []).filter(function(c){ return externeNames.indexOf(c) === -1; });
   var isUnrestricted = list.some(isTousChantiersValue);
 
   if (isUnrestricted) {
     wrap.innerHTML = '<input class="bl-input" id="chantierInput" type="text" placeholder="Nom du chantier" autocomplete="off" autocorrect="off" spellcheck="false" onfocus="cancelAutoReset()" oninput="document.getElementById(\'chantierErr\').style.display=\'none\'">';
     return;
   }
-  if (list.length === 0) {
+  if (list.length === 0 && ext.length === 0) {
     wrap.innerHTML = '<select class="bl-input" id="chantierInput" disabled style="letter-spacing:0;text-transform:none;opacity:0.5"><option value="">Aucun chantier autorisé</option></select>';
     return;
   }
-  var options = '<option value="">— Choisir le chantier —</option>' + list.map(function(c) {
-    var esc = String(c).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;");
-    return '<option value="'+esc+'">'+esc+'</option>';
+  function escOpt(s) { return String(s).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;"); }
+  var options = '<option value="">— Choisir le chantier —</option>';
+  options += list.map(function(c) {
+    var e = escOpt(c);
+    return '<option value="'+e+'">'+e+'</option>';
+  }).join("");
+  options += ext.map(function(e) {
+    var eChantier = escOpt(e.chantier);
+    var eNom = escOpt(e.entreprise_nom || "");
+    var eId = escOpt(e.entreprise_id || "");
+    return '<option value="'+eChantier+'" data-entreprise-id="'+eId+'" data-entreprise-nom="'+eNom+'">['+eNom+'] '+eChantier+'</option>';
   }).join("");
   wrap.innerHTML = '<select class="bl-input" id="chantierInput" onfocus="cancelAutoReset()" onchange="cancelAutoReset();document.getElementById(\'chantierErr\').style.display=\'none\'" style="letter-spacing:0;text-transform:none">'+options+'</select>';
 }
@@ -1388,20 +1417,34 @@ async function saveBL() {
     return;
   }
 
+  // Si le chantier choisi est un chantier "prêté" par une autre entreprise
+  // (sous-traitance, voir migration 110), l'option porte l'id de cette
+  // entreprise en attribut data- : on le transmet pour que le serveur
+  // rattache le passage à la BONNE entreprise (revalidé entièrement côté
+  // serveur, jamais fait confiance côté navigateur).
+  var chantierEl = document.getElementById("chantierInput");
+  var entrepriseIdPourChantier = null;
+  if (chantierEl && chantierEl.tagName === "SELECT" && chantierEl.selectedOptions && chantierEl.selectedOptions[0]) {
+    entrepriseIdPourChantier = chantierEl.selectedOptions[0].dataset.entrepriseId || null;
+  }
+
   // Le chantier saisi est revalidé côté serveur (fonction validate_passage_chantier) :
   // impossible d'enregistrer un chantier qui ne fait pas partie de la vraie liste
   // autorisée du salarié, quel que soit ce que le navigateur envoie.
   var saved = false;
   var callFailed = false;
+  var vrow = null;
   try {
     var { data, error } = await supabase.rpc('validate_passage_chantier', {
       p_passage_id: currentPassageId,
       p_chantier: chantier,
       p_bon_livraison: bonLivraison || null,
-      p_lien_bl: lienBl || null
+      p_lien_bl: lienBl || null,
+      p_entreprise_id: entrepriseIdPourChantier
     });
     if (error) throw error;
-    saved = data === true;
+    vrow = Array.isArray(data) ? data[0] : data;
+    saved = !!(vrow && vrow.ok);
   } catch(e) { console.error("saveBL error", e); callFailed = true; }
 
   if (!saved) {
@@ -1414,6 +1457,18 @@ async function saveBL() {
       : "❌ Sélectionnez un chantier autorisé avant de valider le retrait";
     errEl.style.display = "block";
     return;
+  }
+
+  // Chantier "prêté" confirmé : le numéro de suivi affiché juste après le
+  // scan a pu être régénéré côté serveur (rattaché à la bonne entreprise,
+  // pas à celle du badge) — on rafraîchit l'affichage avec la valeur
+  // définitive renvoyée par validate_passage_chantier.
+  if (vrow && vrow.numero_suivi) {
+    document.getElementById("numeroSuiviValue").textContent = "N° " + vrow.numero_suivi;
+    document.getElementById("numeroSuiviCard").style.display = "block";
+  }
+  if (vrow && vrow.entreprise) {
+    document.getElementById("dCompany").textContent = vrow.entreprise;
   }
 
   var msg = "Chantier : " + chantier + (bonLivraison ? " · BL " + bonLivraison : "") + (lienBl ? " · 📎 document joint" : "");
