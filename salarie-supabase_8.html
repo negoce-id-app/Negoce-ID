@@ -2459,7 +2459,6 @@ textarea.dmd-in{resize:none;min-height:80px}
 .hrs-time-in{flex:1;min-width:0}
 .hrs-item-top{display:flex;align-items:center;justify-content:space-between}
 .hrs-item-total{font-size:12px;font-weight:800;color:var(--orange-dark);background:var(--orange-soft);padding:2px 8px;border-radius:20px;white-space:nowrap}
-.hrs-item-remove{flex-shrink:0;width:28px;height:28px;border-radius:8px;border:1.5px solid var(--border);background:var(--white);color:var(--muted);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
 </style>
 </head>
 <body>
@@ -3100,7 +3099,6 @@ async function loadMesHeures() {
         '</div>'+
         '<div class="dmd-item-meta">📅 '+date+' · ⏱️ '+horaires+'</div>'+
         (h.note ? '<div class="dmd-item-msg">'+esc(h.note)+'</div>' : '')+
-        '<button type="button" class="hrs-item-remove" onclick="removeHeureTravail('+h.id+')" title="Supprimer cette ligne" style="align-self:flex-end;margin-top:4px">✕</button>'+
       '</div>';
     }).join("");
   } catch(e) {
@@ -3111,17 +3109,6 @@ async function loadMesHeures() {
     // does not exist" tant que negoceid-113 n'a pas été exécuté).
     var msg = (e && e.message) ? e.message : "Erreur inconnue";
     list.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted)">⚠️ Erreur de chargement<br><span style="font-size:11px">'+esc(msg)+'</span></div>';
-  }
-}
-
-async function removeHeureTravail(id) {
-  if (!currentCode) return;
-  try {
-    var { error } = await supabase.rpc('delete_heure_travail', { p_id: id, p_code_salarie: currentCode, p_pin: currentPin });
-    if (error) throw error;
-    await loadMesHeures();
-  } catch(e) {
-    console.error("removeHeureTravail error", e);
   }
 }
 
