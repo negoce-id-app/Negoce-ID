@@ -149,7 +149,8 @@ body{font-family:'Inter',sans-serif;background:var(--bg);display:flex;flex-direc
 .dmn-item{padding:12px 0;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:5px}
 .dmn-item:last-child{border-bottom:none}
 .dmn-top{display:flex;align-items:center;justify-content:space-between}
-.dmn-salarie{font-size:13px;font-weight:700;color:var(--navy)}
+.dmn-entreprise{font-size:15px;font-weight:800;color:var(--navy)}
+.dmn-salarie{font-size:12px;color:var(--muted);margin-top:1px}
 .dmn-statut{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;text-transform:uppercase}
 .dmn-statut.nouvelle{background:var(--orange-soft);color:var(--orange-dark)}
 .dmn-statut.traitee{background:var(--green-bg);color:var(--green)}
@@ -1166,7 +1167,10 @@ async function loadDemandesNego() {
       var adresseNegoHtml = d.adresse_livraison ? '<div class="dmn-msg" style="font-weight:700">📍 '+esc(d.adresse_livraison)+'</div>' : '';
       return '<div class="dmn-item">'+
         '<div class="dmn-top">'+
-          '<div class="dmn-salarie">'+esc(d.nom_salarie||d.code_salarie)+'</div>'+
+          '<div>'+
+            '<div class="dmn-entreprise">🏢 '+esc(d.entreprise_nom||"—")+'</div>'+
+            '<div class="dmn-salarie">'+esc(d.nom_salarie||d.code_salarie)+'</div>'+
+          '</div>'+
           '<div class="dmn-statut '+(traitee?"traitee":"nouvelle")+'">'+(traitee?"Traitée":"Nouvelle")+'</div>'+
         '</div>'+
         lignesNegoHtml+
