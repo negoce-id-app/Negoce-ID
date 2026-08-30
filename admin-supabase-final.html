@@ -2697,6 +2697,35 @@ tr:hover td{background:#FAFBFF}
       </table></div>
     </div>
 
+    <!-- HEURES DE TRAVAIL -->
+    <div class="section">
+      <div class="section-hdr">
+        <div class="section-title">🕒 Heures de travail — <span id="heuresTotalVal" style="color:var(--orange)">0 h</span></div>
+        <div class="section-actions">
+          <button class="btn-action btn-outline" onclick="exportCSV('heures')">⬇️ Export CSV</button>
+        </div>
+      </div>
+      <div class="filter-row">
+        <select class="filter-select" id="filterHeuresSalarie" onchange="renderHeuresBody()">
+          <option value="all">Recherche par salarié — tous</option>
+        </select>
+        <select class="filter-select" id="filterHeuresChantier" onchange="renderHeuresBody()">
+          <option value="all">Recherche par chantier — tous</option>
+        </select>
+      </div>
+      <div class="filter-row">
+        <input class="filter-select" type="date" id="filterHeuresDateDebut" style="min-width:150px">
+        <span style="color:var(--muted);font-size:13px;align-self:center">→</span>
+        <input class="filter-select" type="date" id="filterHeuresDateFin" style="min-width:150px">
+        <button class="btn-action btn-outline" onclick="loadHeuresTravail()">🔍 Rechercher sur la période</button>
+        <button class="btn-action btn-outline" onclick="reinitialiserPeriodeHeures()">✕ Réinitialiser</button>
+      </div>
+      <div class="table-scroll"><table>
+        <thead><tr><th>Date</th><th>Code</th><th>Salarié</th><th>Chantier</th><th>Horaires</th><th>Total</th><th>Note</th></tr></thead>
+        <tbody id="heuresBody"><tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">⏳ Chargement...</td></tr></tbody>
+      </table></div>
+    </div>
+
     <!-- FOURNISSEURS -->
     <div class="section">
       <div class="section-hdr">
@@ -3080,6 +3109,7 @@ function departementOptions(selected, withAll) {
 var currentCompany = null;
 var salaries = [];
 var passages = [];
+var heuresTravail = [];
 var salPhotoData = null;
 // Table "passages" ne stocke que le nom d'agence (texte figé au moment du
 // scan, ex. "UNIKALO CHARENTE MERIGNAC") — pas de ville, et surtout pas de
@@ -4575,6 +4605,7 @@ async function loadData() {
   }
   await loadAgenceVilleMap();
   await loadPassages();
+  await loadHeuresTravail();
 }
 
 // Charge la correspondance {nom d'agence -> ville} — voir le commentaire
@@ -4671,6 +4702,104 @@ function getFilteredPassages() {
   if (salarie !== "all") result = result.filter(function(p) { return p.code_salarie === salarie; });
   if (chantier !== "all") result = result.filter(function(p) { return p.chantier === chantier; });
   return result;
+}
+
+// ── HEURES DE TRAVAIL (saisies par les salariés depuis leur app) ──
+async function loadHeuresTravail() {
+  if (!currentCompany) return;
+  var debutEl = document.getElementById("filterHeuresDateDebut");
+  var finEl = document.getElementById("filterHeuresDateFin");
+  var debut = debutEl ? debutEl.value : "";
+  var fin = finEl ? finEl.value : "";
+  try {
+    var query = supabase.from('heures_travail').select('*').eq('company_id', currentCompany.id)
+      .order('date_travail', {ascending:false}).order('heure_debut', {ascending:false});
+    if (debut) query = query.gte('date_travail', debut);
+    if (fin) query = query.lte('date_travail', fin);
+    if (!debut && !fin) query = query.limit(100);
+    var { data, error } = await query;
+    if (error) throw error;
+    heuresTravail = Array.isArray(data) ? data : [];
+  } catch(e) {
+    console.error("loadHeuresTravail error", e);
+    heuresTravail = [];
+  }
+  populateHeuresFilters();
+  renderHeuresBody();
+}
+
+function reinitialiserPeriodeHeures() {
+  var debutEl = document.getElementById("filterHeuresDateDebut");
+  var finEl = document.getElementById("filterHeuresDateFin");
+  if (debutEl) debutEl.value = "";
+  if (finEl) finEl.value = "";
+  loadHeuresTravail();
+}
+
+function populateHeuresFilters() {
+  var salarieSel = document.getElementById("filterHeuresSalarie");
+  if (!salarieSel) return;
+  var namesMap = {};
+  heuresTravail.forEach(function(h) {
+    if (h.code_salarie) namesMap[h.code_salarie] = h.nom_salarie || h.code_salarie;
+  });
+  var codes = Object.keys(namesMap).sort(function(a,b){ return String(namesMap[a]).localeCompare(String(namesMap[b])); });
+  var prevSalarie = salarieSel.value || "all";
+  salarieSel.innerHTML = '<option value="all">Recherche par salarié — tous</option>' +
+    codes.map(function(c){
+      var e = String(namesMap[c]).replace(/&/g,"&amp;").replace(/</g,"&lt;");
+      return '<option value="'+c+'">'+e+' ('+c+')</option>';
+    }).join("");
+  salarieSel.value = (codes.indexOf(prevSalarie) !== -1) ? prevSalarie : "all";
+
+  var chantierSel = document.getElementById("filterHeuresChantier");
+  if (chantierSel) {
+    var chantiers = Array.from(new Set(heuresTravail.map(function(h){return h.chantier;}).filter(Boolean)))
+      .sort(function(a,b){ return a.localeCompare(b, 'fr'); });
+    var prevChantier = chantierSel.value || "all";
+    chantierSel.innerHTML = '<option value="all">Recherche par chantier — tous</option>' +
+      chantiers.map(function(c){ return '<option value="'+esc(c)+'">'+esc(c)+'</option>'; }).join("");
+    chantierSel.value = (chantiers.indexOf(prevChantier) !== -1) ? prevChantier : "all";
+  }
+}
+
+function getFilteredHeures() {
+  var salarieSel = document.getElementById("filterHeuresSalarie");
+  var salarie = salarieSel ? salarieSel.value : "all";
+  var chantierSel = document.getElementById("filterHeuresChantier");
+  var chantier = chantierSel ? chantierSel.value : "all";
+  var result = heuresTravail;
+  if (salarie !== "all") result = result.filter(function(h) { return h.code_salarie === salarie; });
+  if (chantier !== "all") result = result.filter(function(h) { return h.chantier === chantier; });
+  return result;
+}
+
+function renderHeuresBody() {
+  var filtered = getFilteredHeures();
+  var totalEl = document.getElementById("heuresTotalVal");
+  if (totalEl) {
+    var total = filtered.reduce(function(sum,h){ return sum + (Number(h.heures)||0); }, 0);
+    totalEl.textContent = total.toFixed(2).replace(".",",") + " h";
+  }
+  var hb = document.getElementById("heuresBody");
+  if (!hb) return;
+  if (filtered.length === 0) {
+    hb.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">Aucune heure saisie</td></tr>';
+    return;
+  }
+  hb.innerHTML = filtered.map(function(h) {
+    var date = h.date_travail ? new Date(h.date_travail+"T00:00:00").toLocaleDateString("fr-FR") : "—";
+    var horaires = (h.heure_debut||"").slice(0,5) + " → " + (h.heure_fin||"").slice(0,5);
+    return '<tr>'+
+      '<td style="font-size:12px">'+date+'</td>'+
+      '<td><code style="font-size:11px;font-weight:700">'+esc(h.code_salarie)+'</code></td>'+
+      '<td>'+esc(h.nom_salarie||h.code_salarie)+'</td>'+
+      '<td>'+(h.chantier?'<span style="font-size:12px;font-weight:600;color:var(--navy)">🏗️ '+esc(h.chantier)+'</span>':'<span style="color:var(--muted);font-size:11px">—</span>')+'</td>'+
+      '<td style="font-size:12px">'+horaires+'</td>'+
+      '<td><strong>'+(Number(h.heures)||0).toFixed(2).replace(".",",")+' h</strong></td>'+
+      '<td style="font-size:12px;color:var(--muted)">'+esc(h.note||"—")+'</td>'+
+    '</tr>';
+  }).join("");
 }
 
 function renderAll() {
@@ -5448,7 +5577,7 @@ function showQRInModal(code) {
 
 // ── EXPORT ──
 function exportCSV(type) {
-  var data = type === "salaries" ? salaries : getFilteredPassages();
+  var data = type === "salaries" ? salaries : (type === "heures" ? getFilteredHeures() : getFilteredPassages());
   if (!data.length) { alert("Aucune donnée à exporter"); return; }
   // "photo" est désormais une URL Storage courte (voir uploadSalPhotoBlob) :
   // on peut l'inclure dans l'export. On exclut uniquement les éventuelles

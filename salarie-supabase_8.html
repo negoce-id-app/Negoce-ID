@@ -2444,6 +2444,22 @@ textarea.dmd-in{resize:none;min-height:80px}
 .dmd-item-meta{font-size:11px;color:var(--muted)}
 .dmd-item-reponse{font-size:12px;color:var(--navy);background:var(--green-bg,#EDFBF3);border-radius:10px;padding:9px 12px;margin-top:2px;line-height:1.4}
 .dmd-item-reponse strong{display:block;font-size:9px;text-transform:uppercase;letter-spacing:0.6px;color:var(--green);margin-bottom:3px;font-weight:800}
+.dmd-lignes-list{display:flex;flex-direction:column;gap:8px}
+.dmd-ligne-row{display:flex;gap:8px;align-items:center}
+.dmd-ligne-row .dmd-in{margin:0}
+.dmd-ligne-desig{flex:2;min-width:0}
+.dmd-ligne-qte{flex:1;min-width:0}
+.dmd-ligne-remove{flex-shrink:0;width:38px;height:38px;border-radius:10px;border:2px solid var(--border);background:var(--white);color:var(--muted);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
+.dmd-add-ligne{width:100%;padding:10px;border:2px dashed var(--border);border-radius:12px;background:transparent;color:var(--muted);font-size:13px;font-weight:700;cursor:pointer;margin-top:8px}
+.dmd-item-lignes{display:flex;flex-direction:column;gap:2px;margin:2px 0}
+.dmd-item-ligne{font-size:12px;color:#374151;display:flex;justify-content:space-between;gap:8px}
+.dmd-item-ligne b{color:var(--navy);font-weight:700}
+.hrs-time-row{display:flex;gap:8px;align-items:center}
+.hrs-time-row .dmd-in{margin:0}
+.hrs-time-in{flex:1;min-width:0}
+.hrs-item-top{display:flex;align-items:center;justify-content:space-between}
+.hrs-item-total{font-size:12px;font-weight:800;color:var(--orange-dark);background:var(--orange-soft);padding:2px 8px;border-radius:20px;white-space:nowrap}
+.hrs-item-remove{flex-shrink:0;width:28px;height:28px;border-radius:8px;border:1.5px solid var(--border);background:var(--white);color:var(--muted);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
 </style>
 </head>
 <body>
@@ -2503,7 +2519,8 @@ textarea.dmd-in{resize:none;min-height:80px}
   <div class="tabs">
     <button class="tab active" onclick="switchTab('carte',this)">🪪 Ma carte</button>
     <button class="tab" onclick="switchTab('bl',this)">📋 Mes BL</button>
-    <button class="tab" onclick="switchTab('demande',this)">📤 Demande</button>
+    <button class="tab" onclick="switchTab('demande',this)">📋 Bon de commande</button>
+    <button class="tab" onclick="switchTab('heures',this)">🕒 Mes heures</button>
   </div>
 </div>
 
@@ -2589,18 +2606,54 @@ textarea.dmd-in{resize:none;min-height:80px}
         <option value="">—</option>
       </select>
     </div>
-    <label class="dmd-lbl">Votre demande</label>
-    <textarea class="dmd-in" id="dmdMessage" placeholder="Ex: 10 sacs de ciment, palette de parpaings"></textarea>
-    <button class="btn" style="margin-top:14px" onclick="sendDemande()">Envoyer la demande →</button>
-    <div class="dmd-ok" id="dmdOk">✅ Demande envoyée au négociant</div>
+    <label class="dmd-lbl">Lignes du bon de commande</label>
+    <div class="dmd-lignes-list" id="dmdLignesList"></div>
+    <button type="button" class="dmd-add-ligne" onclick="addDmdLigne()">+ Ajouter une ligne</button>
+    <label class="dmd-lbl">Remarque <span style="text-transform:none;font-weight:600">(optionnel)</span></label>
+    <textarea class="dmd-in" id="dmdMessage" placeholder="Ex: livraison avant 10h si possible"></textarea>
+    <button class="btn" style="margin-top:14px" onclick="sendDemande()">Envoyer le bon de commande →</button>
+    <div class="dmd-ok" id="dmdOk">✅ Bon de commande envoyé au négociant</div>
     <div class="err" id="dmdErr" style="margin-top:10px"></div>
   </div>
   <div class="bl-list-card">
     <div class="bl-list-title">
-      📤 Mes demandes envoyées
+      📋 Mes bons de commande envoyés
       <button class="btn-refresh" onclick="loadMesDemandes()">↻</button>
     </div>
     <div id="dmdList"><div style="text-align:center;padding:24px;color:var(--muted)">⏳ Chargement...</div></div>
+  </div>
+  <button class="btn-out" onclick="out()">← Déconnexion</button>
+</div>
+
+<!-- MES HEURES DE TRAVAIL -->
+<div class="screen hidden" id="sHeures">
+  <div class="dmd-card">
+    <label class="dmd-lbl">Date</label>
+    <input class="dmd-in" id="hrsDate" type="date">
+    <label class="dmd-lbl">Chantier</label>
+    <div id="hrsChantierWrap">
+      <select class="dmd-in" id="hrsChantier">
+        <option value="">—</option>
+      </select>
+    </div>
+    <label class="dmd-lbl">Horaires</label>
+    <div class="hrs-time-row">
+      <input class="dmd-in hrs-time-in" id="hrsDebut" type="time">
+      <span style="color:var(--muted);font-size:13px">→</span>
+      <input class="dmd-in hrs-time-in" id="hrsFin" type="time">
+    </div>
+    <label class="dmd-lbl">Note <span style="text-transform:none;font-weight:600">(optionnel)</span></label>
+    <textarea class="dmd-in" id="hrsNote" placeholder="Ex: livraison, coulage dalle..."></textarea>
+    <button class="btn" style="margin-top:14px" onclick="sendHeureTravail()">Enregistrer →</button>
+    <div class="dmd-ok" id="hrsOk">✅ Heures enregistrées</div>
+    <div class="err" id="hrsErr" style="margin-top:10px"></div>
+  </div>
+  <div class="bl-list-card">
+    <div class="bl-list-title">
+      🕒 Mes heures saisies
+      <button class="btn-refresh" onclick="loadMesHeures()">↻</button>
+    </div>
+    <div id="hrsList"><div style="text-align:center;padding:24px;color:var(--muted)">⏳ Chargement...</div></div>
   </div>
   <button class="btn-out" onclick="out()">← Déconnexion</button>
 </div>
@@ -2697,8 +2750,10 @@ function switchTab(tab, el) {
   document.getElementById("sCarte").classList.toggle("hidden", tab !== "carte");
   document.getElementById("sBL").classList.toggle("hidden", tab !== "bl");
   document.getElementById("sDemande").classList.toggle("hidden", tab !== "demande");
+  document.getElementById("sHeures").classList.toggle("hidden", tab !== "heures");
   if (tab === "bl") loadBL();
   if (tab === "demande") openDemandeTab();
+  if (tab === "heures") openHeuresTab();
   // Le code dynamique n'a d'intérêt que sur l'onglet "Ma carte" : on
   // n'appelle get_my_totp_code() (donc on ne revalide le PIN) que
   // pendant qu'il est réellement affiché.
@@ -2756,9 +2811,42 @@ var currentUser = null;
 async function openDemandeTab() {
   document.getElementById("dmdOk").style.display = "none";
   document.getElementById("dmdErr").style.display = "none";
+  dmdLignes = [{ designation: "", quantite: "" }];
+  renderDmdLignes();
   populateDemandeChantiers();
   await populateDemandeAgences();
   await loadMesDemandes();
+}
+
+// ── Lignes du bon de commande : désignation + quantité en saisie libre,
+// pas de catalogue produits — autant de lignes que nécessaire.
+var dmdLignes = [{ designation: "", quantite: "" }];
+
+function renderDmdLignes() {
+  var wrap = document.getElementById("dmdLignesList");
+  if (!wrap) return;
+  wrap.innerHTML = dmdLignes.map(function(l, i) {
+    return '<div class="dmd-ligne-row">'+
+      '<input class="dmd-in dmd-ligne-desig" type="text" placeholder="Désignation (ex: sacs de ciment)" value="'+esc(l.designation)+'" oninput="updateDmdLigne('+i+',\'designation\',this.value)">'+
+      '<input class="dmd-in dmd-ligne-qte" type="text" placeholder="Qté" value="'+esc(l.quantite)+'" oninput="updateDmdLigne('+i+',\'quantite\',this.value)">'+
+      (dmdLignes.length > 1 ? '<button type="button" class="dmd-ligne-remove" onclick="removeDmdLigne('+i+')" title="Retirer cette ligne">✕</button>' : '')+
+    '</div>';
+  }).join("");
+}
+
+function updateDmdLigne(i, field, value) {
+  if (dmdLignes[i]) dmdLignes[i][field] = value;
+}
+
+function addDmdLigne() {
+  dmdLignes.push({ designation: "", quantite: "" });
+  renderDmdLignes();
+}
+
+function removeDmdLigne(i) {
+  dmdLignes.splice(i, 1);
+  if (dmdLignes.length === 0) dmdLignes.push({ designation: "", quantite: "" });
+  renderDmdLignes();
 }
 
 // Détecte les valeurs signifiant "aucune restriction de chantier" saisies
@@ -2832,18 +2920,26 @@ async function sendDemande() {
   okEl.style.display = "none";
   if (!agence) { errEl.textContent = "❌ Choisissez un négociant"; errEl.style.display = "block"; return; }
   if (!chantier) { errEl.textContent = "❌ Indiquez le chantier concerné"; errEl.style.display = "block"; return; }
-  if (!message) { errEl.textContent = "❌ Décrivez votre demande"; errEl.style.display = "block"; return; }
+  var lignesValides = dmdLignes
+    .map(function(l){ return { designation: (l.designation||"").trim(), quantite: (l.quantite||"").trim() }; })
+    .filter(function(l){ return l.designation; });
+  if (lignesValides.length === 0) { errEl.textContent = "❌ Ajoutez au moins une ligne avec une désignation"; errEl.style.display = "block"; return; }
   try {
+    // "lignes" est revalidé côté serveur (au moins une désignation non
+    // vide) — voir create_demande, migration 112.
     var { error } = await supabase.rpc('create_demande', {
       p_code_salarie: currentCode,
       p_nom_salarie: currentUser ? currentUser.nom : currentCode,
       p_chantier: chantier,
       p_agence_cible: agence,
-      p_message: message,
+      p_lignes: lignesValides,
+      p_message: message || null,
       p_pin: currentPin
     });
     if (error) throw error;
     document.getElementById("dmdMessage").value = "";
+    dmdLignes = [{ designation: "", quantite: "" }];
+    renderDmdLignes();
     okEl.style.display = "block";
     await loadMesDemandes();
   } catch(e) {
@@ -2870,12 +2966,23 @@ async function loadMesDemandes() {
       var reponseBlock = (d.statut === "traitee" && d.reponse)
         ? '<div class="dmd-item-reponse"><strong>Réponse du négociant</strong>'+esc(d.reponse)+'</div>'
         : '';
+      // "lignes" (bon de commande, migration 112) est prioritaire sur
+      // "message" (ancien format) — les anciennes demandes déjà envoyées
+      // avant cette migration n'ont que "message" et restent affichables.
+      var lignes = Array.isArray(d.lignes) ? d.lignes : [];
+      var lignesHtml = lignes.length
+        ? '<div class="dmd-item-lignes">'+lignes.map(function(l){
+            return '<div class="dmd-item-ligne"><span>'+esc(l.designation||"")+'</span>'+(l.quantite?'<b>'+esc(l.quantite)+'</b>':'')+'</div>';
+          }).join("")+'</div>'
+        : (d.message ? '<div class="dmd-item-msg">'+esc(d.message)+'</div>' : '');
+      var remarqueHtml = (lignes.length && d.message) ? '<div class="dmd-item-msg" style="font-style:italic">💬 '+esc(d.message)+'</div>' : '';
       return '<div class="dmd-item">'+
         '<div class="dmd-item-top">'+
           '<div class="dmd-item-agence">🏪 '+esc(d.agence_cible)+'</div>'+
           '<div class="dmd-item-statut '+(d.statut==="traitee"?"traitee":"nouvelle")+'">'+(d.statut==="traitee"?"Traitée":"Nouvelle")+'</div>'+
         '</div>'+
-        '<div class="dmd-item-msg">'+esc(d.message)+'</div>'+
+        lignesHtml+
+        remarqueHtml+
         '<div class="dmd-item-meta">'+date+(d.chantier?' · 🏗️ '+esc(d.chantier):'')+'</div>'+
         reponseBlock+
       '</div>';
@@ -2883,6 +2990,120 @@ async function loadMesDemandes() {
   } catch(e) {
     console.error("loadMesDemandes error", e);
     list.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted)">⚠️ Erreur de chargement</div>';
+  }
+}
+
+// ── HEURES DE TRAVAIL ──
+async function openHeuresTab() {
+  document.getElementById("hrsOk").style.display = "none";
+  document.getElementById("hrsErr").style.display = "none";
+  var dateEl = document.getElementById("hrsDate");
+  if (dateEl && !dateEl.value) dateEl.value = new Date().toISOString().slice(0, 10);
+  populateHeuresChantiers();
+  await loadMesHeures();
+}
+
+// Même logique que populateDemandeChantiers (liste déroulante limitée aux
+// chantiers autorisés du salarié, ou saisie libre si "Tous chantiers").
+function populateHeuresChantiers() {
+  var wrap = document.getElementById("hrsChantierWrap");
+  if (!wrap) return;
+  var ch = (currentUser && Array.isArray(currentUser.chantiers)) ? currentUser.chantiers : [];
+  var isUnrestricted = ch.some(isTousChantiersValue);
+  if (isUnrestricted) {
+    wrap.innerHTML = '<input class="dmd-in" id="hrsChantier" type="text" placeholder="Nom du chantier" autocomplete="off" autocorrect="off" spellcheck="false">';
+    return;
+  }
+  if (ch.length === 0) {
+    wrap.innerHTML = '<select class="dmd-in" id="hrsChantier" disabled><option value="">Aucun chantier autorisé</option></select>';
+    return;
+  }
+  var options = '<option value="">— Choisir le chantier —</option>' + ch.map(function(c){
+    var e = String(c).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;");
+    return '<option value="'+e+'">'+e+'</option>';
+  }).join("");
+  wrap.innerHTML = '<select class="dmd-in" id="hrsChantier">'+options+'</select>';
+}
+
+async function sendHeureTravail() {
+  var date = document.getElementById("hrsDate").value;
+  var chantierEl = document.getElementById("hrsChantier");
+  var chantier = chantierEl ? chantierEl.value.trim() : "";
+  var debut = document.getElementById("hrsDebut").value;
+  var fin = document.getElementById("hrsFin").value;
+  var note = document.getElementById("hrsNote").value.trim();
+  var errEl = document.getElementById("hrsErr");
+  var okEl = document.getElementById("hrsOk");
+  errEl.style.display = "none";
+  okEl.style.display = "none";
+  if (!date) { errEl.textContent = "❌ Indiquez la date"; errEl.style.display = "block"; return; }
+  if (!chantier) { errEl.textContent = "❌ Indiquez le chantier concerné"; errEl.style.display = "block"; return; }
+  if (!debut || !fin) { errEl.textContent = "❌ Indiquez l'heure de début et l'heure de fin"; errEl.style.display = "block"; return; }
+  if (fin <= debut) { errEl.textContent = "❌ L'heure de fin doit être après l'heure de début"; errEl.style.display = "block"; return; }
+  try {
+    var { error } = await supabase.rpc('create_heure_travail', {
+      p_code_salarie: currentCode,
+      p_nom_salarie: currentUser ? currentUser.nom : currentCode,
+      p_chantier: chantier,
+      p_date: date,
+      p_heure_debut: debut,
+      p_heure_fin: fin,
+      p_note: note || null,
+      p_pin: currentPin
+    });
+    if (error) throw error;
+    document.getElementById("hrsDebut").value = "";
+    document.getElementById("hrsFin").value = "";
+    document.getElementById("hrsNote").value = "";
+    okEl.style.display = "block";
+    await loadMesHeures();
+  } catch(e) {
+    console.error("sendHeureTravail error", e);
+    errEl.textContent = "❌ Échec de l'enregistrement, réessayez";
+    errEl.style.display = "block";
+  }
+}
+
+async function loadMesHeures() {
+  if (!currentCode) return;
+  var list = document.getElementById("hrsList");
+  list.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted)">⏳ Chargement...</div>';
+  try {
+    var { data, error } = await supabase.rpc('get_heures_by_salarie', { p_code: currentCode, p_pin: currentPin });
+    if (error) throw error;
+    var heures = Array.isArray(data) ? data : [];
+    if (heures.length === 0) {
+      list.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted)">Aucune heure saisie</div>';
+      return;
+    }
+    list.innerHTML = heures.map(function(h) {
+      var date = h.date_travail ? new Date(h.date_travail+"T00:00:00").toLocaleDateString("fr-FR") : "—";
+      var horaires = (h.heure_debut||"").slice(0,5) + " → " + (h.heure_fin||"").slice(0,5);
+      var total = (Number(h.heures)||0).toFixed(2).replace(".",",") + " h";
+      return '<div class="dmd-item">'+
+        '<div class="hrs-item-top">'+
+          '<div class="dmd-item-agence">🏗️ '+esc(h.chantier||"—")+'</div>'+
+          '<div class="hrs-item-total">'+total+'</div>'+
+        '</div>'+
+        '<div class="dmd-item-meta">📅 '+date+' · ⏱️ '+horaires+'</div>'+
+        (h.note ? '<div class="dmd-item-msg">'+esc(h.note)+'</div>' : '')+
+        '<button type="button" class="hrs-item-remove" onclick="removeHeureTravail('+h.id+')" title="Supprimer cette ligne" style="align-self:flex-end;margin-top:4px">✕</button>'+
+      '</div>';
+    }).join("");
+  } catch(e) {
+    console.error("loadMesHeures error", e);
+    list.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted)">⚠️ Erreur de chargement</div>';
+  }
+}
+
+async function removeHeureTravail(id) {
+  if (!currentCode) return;
+  try {
+    var { error } = await supabase.rpc('delete_heure_travail', { p_id: id, p_code_salarie: currentCode, p_pin: currentPin });
+    if (error) throw error;
+    await loadMesHeures();
+  } catch(e) {
+    console.error("removeHeureTravail error", e);
   }
 }
 
