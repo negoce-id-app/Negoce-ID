@@ -3623,7 +3623,16 @@ function renderCompaniesSection() {
         + '<button class="btn-tbl" onclick="openOfferFreeModal(\''+escJsAttr(c.id)+'\',\''+escJsAttr(c.nom)+'\')" title="Activer sans paiement">🎁 Offrir</button> '
         + '<button class="btn-tbl danger" onclick="setCompanyStatut(\''+escJsAttr(c.id)+'\',\'inactif\')">⛔ Désactiver</button>';
     } else if (statut === "actif") {
-      actionBtn = '<button class="btn-tbl danger" onclick="setCompanyStatut(\''+escJsAttr(c.id)+'\',\'inactif\')">⛔ Désactiver</button>';
+      // Un abonnement "actif" peut venir d'un vrai paiement Stripe (a un
+      // stripe_subscription_id) ou d'un geste commercial "🎁 Offrir" (aucun
+      // paiement Stripe derrière). Pour ces derniers, on garde la
+      // possibilité de générer un lien de paiement à tout moment, pour
+      // basculer vers un abonnement réellement payant sans devoir d'abord
+      // désactiver puis réactiver l'entreprise.
+      var estOfferte = !c.stripe_subscription_id;
+      actionBtn = (estOfferte
+        ? '<button class="btn-action btn-gold" onclick="openPaymentModal(\''+escJsAttr(c.id)+'\')" title="Abonnement actuellement offert (aucun paiement Stripe en cours) — génère un lien pour basculer vers un abonnement payant">💳 Passer au payant</button> '
+        : '') + '<button class="btn-tbl danger" onclick="setCompanyStatut(\''+escJsAttr(c.id)+'\',\'inactif\')">⛔ Désactiver</button>';
     } else {
       actionBtn = '<button class="btn-tbl" onclick="setCompanyStatut(\''+escJsAttr(c.id)+'\',\'actif\')">🟢 Réactiver</button>';
     }
@@ -3649,7 +3658,7 @@ function renderCompaniesSection() {
       '<td>'+siretCell+'</td>'+
       '<td>'+deptSelect+'</td>'+
       '<td>'+planSelect+'</td>'+
-      '<td><span class="pill '+pillClass+'">'+statutLabel+'</span></td>'+
+      '<td><span class="pill '+pillClass+'">'+statutLabel+'</span>'+(statut === "actif" && !c.stripe_subscription_id ? ' <span class="pill pill-purple" title="Aucun paiement Stripe en cours">🎁 Offert</span>' : '')+'</td>'+
       '<td>'+actionBtn+' '+deleteBtn+'</td>'+
     '</tr>';
   }).join("");
