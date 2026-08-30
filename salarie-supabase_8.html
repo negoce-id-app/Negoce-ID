@@ -3105,7 +3105,12 @@ async function loadMesHeures() {
     }).join("");
   } catch(e) {
     console.error("loadMesHeures error", e);
-    list.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted)">⚠️ Erreur de chargement</div>';
+    // Message d'erreur affiché explicitement (au lieu d'un "Erreur de
+    // chargement" générique) — utile pour distinguer un vrai bug d'un
+    // script SQL pas encore déployé (ex: "function get_heures_by_salarie
+    // does not exist" tant que negoceid-113 n'a pas été exécuté).
+    var msg = (e && e.message) ? e.message : "Erreur inconnue";
+    list.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted)">⚠️ Erreur de chargement<br><span style="font-size:11px">'+esc(msg)+'</span></div>';
   }
 }
 
