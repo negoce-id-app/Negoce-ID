@@ -1245,17 +1245,21 @@ async function buildBonDeCommandeDoc(d) {
   }
 
   // Logo de l'entreprise (si renseigné) — en haut à droite, taille
-  // proportionnelle conservée.
+  // proportionnelle conservée. logoBottomY sert plus bas à garantir que
+  // le texte ne remonte jamais sous le logo, quelle que soit sa taille.
+  var logoBottomY = 0;
+  var logoTop = 10;
   if (d.entreprise_logo_url) {
     try {
       var dataUrl = await loadImageAsDataUrl(d.entreprise_logo_url);
       var dims = await getImageDims(dataUrl);
-      var tailleBox = { petit: [20, 12], moyen: [32, 18], grand: [45, 25] }[d.entreprise_logo_taille] || [32, 18];
+      var tailleBox = { petit: [26, 16], moyen: [42, 24], grand: [62, 34] }[d.entreprise_logo_taille] || [42, 24];
       var maxW = tailleBox[0], maxH = tailleBox[1];
       var scale = Math.min(maxW / dims.w, maxH / dims.h);
       var imgW = dims.w * scale, imgH = dims.h * scale;
       var fmt = dataUrl.indexOf("image/png") !== -1 ? "PNG" : (dataUrl.indexOf("image/webp") !== -1 ? "WEBP" : "JPEG");
-      doc.addImage(dataUrl, fmt, pageW - marginR - imgW, 10, imgW, imgH);
+      doc.addImage(dataUrl, fmt, pageW - marginR - imgW, logoTop, imgW, imgH);
+      logoBottomY = logoTop + imgH;
     } catch (e) {
       console.error("logo PDF error", e);
     }
@@ -1278,10 +1282,10 @@ async function buildBonDeCommandeDoc(d) {
   doc.setTextColor(120);
   doc.text("Négociant destinataire : " + (currentNego || "—"), marginL, y);
   y += 6;
-  // Laisse la place au logo (haut-droit, jusqu'à 18mm de haut à partir de
-  // y=10) avant de reprendre la largeur complète de la page.
-  if (y < 30) y = 30;
-  y += 4;
+  // Laisse toujours la place au logo (quelle que soit sa taille réelle,
+  // via logoBottomY calculé plus haut) avant de reprendre la largeur
+  // complète de la page.
+  if (y < logoBottomY + 4) y = logoBottomY + 4;
   doc.setTextColor(20);
 
   var date = d.created_at ? new Date(d.created_at).toLocaleDateString("fr-FR") + " " + new Date(d.created_at).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"}) : "—";
@@ -1368,13 +1372,30 @@ function bonDeCommandeFilename(d) {
   return "bon-commande_" + num + (d.code_salarie || "salarie") + "_" + date + ".pdf";
 }
 
-async function imprimerBonDeCommande(id) {
+function imprimerBonDeCommande(id) {
   var d = demandesNegoCache.find(function(x){ return x.id === id; });
   if (!d) return;
-  var doc = await buildBonDeCommandeDoc(d);
-  if (!doc) return;
-  doc.autoPrint();
-  window.open(doc.output("bloburl"), "_blank");
+  // Le PDF est construit de façon asynchrone (chargement du logo) — un
+  // window.open() lancé APRÈS un await n'est plus considéré comme
+  // déclenché par le clic de l'utilisateur, et la plupart des
+  // navigateurs le bloquent silencieusement (popup bloqué). Pour éviter
+  // ça, on ouvre l'onglet vide tout de suite (dans le même clic), puis
+  // on le redirige vers le PDF une fois prêt.
+  var w = window.open("", "_blank");
+  buildBonDeCommandeDoc(d).then(function(doc) {
+    if (!doc) { if (w) w.close(); return; }
+    doc.autoPrint();
+    var url = doc.output("bloburl");
+    if (w && !w.closed) {
+      w.location.href = url;
+    } else {
+      window.open(url, "_blank");
+    }
+  }).catch(function(e) {
+    console.error("imprimerBonDeCommande error", e);
+    if (w) w.close();
+    alert("❌ Échec de la génération du PDF");
+  });
 }
 
 async function telechargerBonDeCommande(id) {
