@@ -2660,12 +2660,15 @@ tr:hover td{background:#FAFBFF}
           <button class="btn-action btn-outline" onclick="openImportSalaries()">📥 Importer un fichier</button>
           <button class="btn-action btn-outline" onclick="openCodesList()">📋 Codes &amp; liens</button>
           <button class="btn-action btn-outline" onclick="exportCSV('salaries')">⬇️ Export</button>
+          <button class="btn-action btn-outline" id="salariesCollapseBtn" onclick="toggleSectionCollapse('salariesCollapseBody','salariesCollapseBtn')">▾ Réduire</button>
         </div>
       </div>
-      <div class="table-scroll"><table>
-        <thead><tr><th>Photo</th><th>Code</th><th>Nom</th><th>Poste</th><th>Type</th><th>Statut</th><th>Chantiers autorisés</th><th>QR</th><th>Actions</th></tr></thead>
-        <tbody id="salariesBody"><tr><td colspan="9" style="text-align:center;color:var(--muted);padding:24px">⏳ Chargement...</td></tr></tbody>
-      </table></div>
+      <div id="salariesCollapseBody">
+        <div class="table-scroll"><table>
+          <thead><tr><th>Photo</th><th>Code</th><th>Nom</th><th>Poste</th><th>Type</th><th>Statut</th><th>Chantiers autorisés</th><th>QR</th><th>Actions</th></tr></thead>
+          <tbody id="salariesBody"><tr><td colspan="9" style="text-align:center;color:var(--muted);padding:24px">⏳ Chargement...</td></tr></tbody>
+        </table></div>
+      </div>
     </div>
 
     <!-- HISTORIQUE -->
@@ -2674,7 +2677,7 @@ tr:hover td{background:#FAFBFF}
         <div class="section-title">📋 Historique des passages</div>
         <div class="section-actions">
           <button class="btn-action btn-outline" onclick="exportCSV('passages')">⬇️ Export CSV</button>
-          <button class="btn-action btn-outline" id="passagesCollapseBtn" onclick="togglePassagesHistorique()">▾ Réduire</button>
+          <button class="btn-action btn-outline" id="passagesCollapseBtn" onclick="toggleSectionCollapse('passagesCollapseBody','passagesCollapseBtn')">▾ Réduire</button>
         </div>
       </div>
       <div id="passagesCollapseBody">
@@ -2706,77 +2709,90 @@ tr:hover td{background:#FAFBFF}
         <div class="section-title">🕒 Heures de travail — <span id="heuresTotalVal" style="color:var(--orange)">0 h</span></div>
         <div class="section-actions">
           <button class="btn-action btn-outline" onclick="exportHeuresExcel()">⬇️ Export Excel</button>
+          <button class="btn-action btn-outline" id="heuresCollapseBtn" onclick="toggleSectionCollapse('heuresCollapseBody','heuresCollapseBtn')">▾ Réduire</button>
         </div>
       </div>
-      <div class="filter-row">
-        <select class="filter-select" id="filterHeuresSalarie" onchange="renderHeuresBody()">
-          <option value="all">Recherche par salarié — tous</option>
-        </select>
-        <select class="filter-select" id="filterHeuresChantier" onchange="renderHeuresBody()">
-          <option value="all">Recherche par chantier — tous</option>
-        </select>
+      <div id="heuresCollapseBody">
+        <div class="filter-row">
+          <select class="filter-select" id="filterHeuresSalarie" onchange="renderHeuresBody()">
+            <option value="all">Recherche par salarié — tous</option>
+          </select>
+          <select class="filter-select" id="filterHeuresChantier" onchange="renderHeuresBody()">
+            <option value="all">Recherche par chantier — tous</option>
+          </select>
+        </div>
+        <div class="filter-row">
+          <input class="filter-select" type="date" id="filterHeuresDateDebut" style="min-width:150px">
+          <span style="color:var(--muted);font-size:13px;align-self:center">→</span>
+          <input class="filter-select" type="date" id="filterHeuresDateFin" style="min-width:150px">
+          <button class="btn-action btn-outline" onclick="loadHeuresTravail()">🔍 Rechercher sur la période</button>
+          <button class="btn-action btn-outline" onclick="reinitialiserPeriodeHeures()">✕ Réinitialiser</button>
+        </div>
+        <div class="table-scroll"><table>
+          <thead><tr><th>Date</th><th>Code</th><th>Salarié</th><th>Chantier</th><th>Horaires</th><th>Total</th><th>Note</th><th>Actions</th></tr></thead>
+          <tbody id="heuresBody"><tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px">⏳ Chargement...</td></tr></tbody>
+        </table></div>
       </div>
-      <div class="filter-row">
-        <input class="filter-select" type="date" id="filterHeuresDateDebut" style="min-width:150px">
-        <span style="color:var(--muted);font-size:13px;align-self:center">→</span>
-        <input class="filter-select" type="date" id="filterHeuresDateFin" style="min-width:150px">
-        <button class="btn-action btn-outline" onclick="loadHeuresTravail()">🔍 Rechercher sur la période</button>
-        <button class="btn-action btn-outline" onclick="reinitialiserPeriodeHeures()">✕ Réinitialiser</button>
-      </div>
-      <div class="table-scroll"><table>
-        <thead><tr><th>Date</th><th>Code</th><th>Salarié</th><th>Chantier</th><th>Horaires</th><th>Total</th><th>Note</th><th>Actions</th></tr></thead>
-        <tbody id="heuresBody"><tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px">⏳ Chargement...</td></tr></tbody>
-      </table></div>
     </div>
 
     <!-- FOURNISSEURS -->
     <div class="section">
       <div class="section-hdr">
         <div class="section-title">🏪 Fournisseurs habituels</div>
+        <div class="section-actions">
+          <button class="btn-action btn-outline" id="fournisseursCollapseBtn" onclick="toggleSectionCollapse('fournisseursCollapseBody','fournisseursCollapseBtn')">▾ Réduire</button>
+        </div>
       </div>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:14px">
-        Ces négociants seront proposés à vos salariés dans l'écran "Demande" de leur carte, pour envoyer une demande à l'avance. Ça ne limite pas où ils peuvent retirer leurs marchandises — la vérification en magasin reste possible chez n'importe quel négociant partenaire.
+      <div id="fournisseursCollapseBody">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:14px">
+          Ces négociants seront proposés à vos salariés dans l'écran "Demande" de leur carte, pour envoyer une demande à l'avance. Ça ne limite pas où ils peuvent retirer leurs marchandises — la vérification en magasin reste possible chez n'importe quel négociant partenaire.
+        </div>
+        <div class="filter-row">
+          <input class="filter-select" id="fournisseurSearchInput" type="text" placeholder="🔎 Rechercher un négociant..." oninput="filterFournisseurOptions()" style="max-width:240px">
+          <select class="filter-select" id="fournisseurAddSelect" style="flex:1;min-width:220px">
+            <option value="">Choisir un négociant à ajouter...</option>
+          </select>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);white-space:nowrap">
+            <input type="checkbox" id="fournisseurAddEnCompte" checked> En compte
+          </label>
+          <button class="btn-action btn-gold" onclick="addFournisseur()">+ Ajouter</button>
+        </div>
+        <div class="table-scroll"><table>
+          <thead><tr><th>Négociant</th><th>En compte</th><th>Action</th></tr></thead>
+          <tbody id="fournisseursBody"><tr><td colspan="3" style="text-align:center;color:var(--muted);padding:24px">⏳ Chargement...</td></tr></tbody>
+        </table></div>
       </div>
-      <div class="filter-row">
-        <input class="filter-select" id="fournisseurSearchInput" type="text" placeholder="🔎 Rechercher un négociant..." oninput="filterFournisseurOptions()" style="max-width:240px">
-        <select class="filter-select" id="fournisseurAddSelect" style="flex:1;min-width:220px">
-          <option value="">Choisir un négociant à ajouter...</option>
-        </select>
-        <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);white-space:nowrap">
-          <input type="checkbox" id="fournisseurAddEnCompte" checked> En compte
-        </label>
-        <button class="btn-action btn-gold" onclick="addFournisseur()">+ Ajouter</button>
-      </div>
-      <div class="table-scroll"><table>
-        <thead><tr><th>Négociant</th><th>En compte</th><th>Action</th></tr></thead>
-        <tbody id="fournisseursBody"><tr><td colspan="3" style="text-align:center;color:var(--muted);padding:24px">⏳ Chargement...</td></tr></tbody>
-      </table></div>
     </div>
 
     <!-- SOUS-TRAITANTS -->
     <div class="section">
       <div class="section-hdr">
         <div class="section-title">🧰 Sous-traitants autorisés</div>
+        <div class="section-actions">
+          <button class="btn-action btn-outline" id="soustraitantsCollapseBtn" onclick="toggleSectionCollapse('soustraitantsCollapseBody','soustraitantsCollapseBtn')">▾ Réduire</button>
+        </div>
       </div>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:14px">
-        Autorisez une autre entreprise (déjà inscrite sur NégoceID — un compte "Indépendant" ou une entreprise classique) sur des chantiers précis des vôtres. Ses salariés verront alors ces chantiers s'ajouter à leur propre badge au moment du scan, chez n'importe quel négociant — sans qu'aucune fiche salarié ne soit créée chez vous.
+      <div id="soustraitantsCollapseBody">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:14px">
+          Autorisez une autre entreprise (déjà inscrite sur NégoceID — un compte "Indépendant" ou une entreprise classique) sur des chantiers précis des vôtres. Ses salariés verront alors ces chantiers s'ajouter à leur propre badge au moment du scan, chez n'importe quel négociant — sans qu'aucune fiche salarié ne soit créée chez vous.
+        </div>
+        <div class="filter-row">
+          <input class="filter-select" id="soustraitantSearchInput" type="text" placeholder="🔎 Chercher une entreprise par nom ou SIRET..." oninput="searchSousTraitantEntreprises()" style="flex:1;min-width:240px">
+        </div>
+        <div id="soustraitantSearchResults" style="display:none;margin-bottom:14px;border:2px solid var(--border);border-radius:10px;max-height:220px;overflow-y:auto"></div>
+        <div class="filter-row" id="soustraitantGrantRow" style="display:none">
+          <div style="flex:1;min-width:220px;font-size:13px;color:var(--navy);font-weight:700;align-self:center" id="soustraitantSelectedLabel"></div>
+          <select class="filter-select" id="soustraitantChantierSelect" style="flex:1;min-width:220px">
+            <option value="">Choisir un chantier à autoriser...</option>
+          </select>
+          <button class="btn-action btn-gold" onclick="addSousTraitantChantier()">+ Autoriser</button>
+          <button class="btn-action btn-outline" onclick="cancelSousTraitantSelection()">Annuler</button>
+        </div>
+        <div class="table-scroll"><table>
+          <thead><tr><th>Entreprise sous-traitante</th><th>Chantier autorisé</th><th>Action</th></tr></thead>
+          <tbody id="soustraitantsBody"><tr><td colspan="3" style="text-align:center;color:var(--muted);padding:24px">⏳ Chargement...</td></tr></tbody>
+        </table></div>
       </div>
-      <div class="filter-row">
-        <input class="filter-select" id="soustraitantSearchInput" type="text" placeholder="🔎 Chercher une entreprise par nom ou SIRET..." oninput="searchSousTraitantEntreprises()" style="flex:1;min-width:240px">
-      </div>
-      <div id="soustraitantSearchResults" style="display:none;margin-bottom:14px;border:2px solid var(--border);border-radius:10px;max-height:220px;overflow-y:auto"></div>
-      <div class="filter-row" id="soustraitantGrantRow" style="display:none">
-        <div style="flex:1;min-width:220px;font-size:13px;color:var(--navy);font-weight:700;align-self:center" id="soustraitantSelectedLabel"></div>
-        <select class="filter-select" id="soustraitantChantierSelect" style="flex:1;min-width:220px">
-          <option value="">Choisir un chantier à autoriser...</option>
-        </select>
-        <button class="btn-action btn-gold" onclick="addSousTraitantChantier()">+ Autoriser</button>
-        <button class="btn-action btn-outline" onclick="cancelSousTraitantSelection()">Annuler</button>
-      </div>
-      <div class="table-scroll"><table>
-        <thead><tr><th>Entreprise sous-traitante</th><th>Chantier autorisé</th><th>Action</th></tr></thead>
-        <tbody id="soustraitantsBody"><tr><td colspan="3" style="text-align:center;color:var(--muted);padding:24px">⏳ Chargement...</td></tr></tbody>
-      </table></div>
     </div>
   </div>
 
@@ -4911,29 +4927,42 @@ async function deleteHeure(id) {
   }
 }
 
-// ── Repli/dépli de l'historique des passages (liste qui peut vite
-// devenir longue) — état mémorisé localement pour rester replié d'une
-// session à l'autre si l'admin le préfère ainsi.
-function togglePassagesHistorique() {
-  var body = document.getElementById("passagesCollapseBody");
+// ── Repli/dépli des sections de la vue "Salariés & passages" (listes
+// qui peuvent vite devenir longues) — état mémorisé localement (par
+// section) pour rester replié d'une session à l'autre si l'admin le
+// préfère ainsi.
+var COLLAPSIBLE_SECTIONS = [
+  ["salariesCollapseBody", "salariesCollapseBtn"],
+  ["passagesCollapseBody", "passagesCollapseBtn"],
+  ["heuresCollapseBody", "heuresCollapseBtn"],
+  ["fournisseursCollapseBody", "fournisseursCollapseBtn"],
+  ["soustraitantsCollapseBody", "soustraitantsCollapseBtn"]
+];
+
+function toggleSectionCollapse(bodyId, btnId) {
+  var body = document.getElementById(bodyId);
   if (!body) return;
   var collapsed = body.style.display === "none";
-  localStorage.setItem("negoceid_passages_collapsed", collapsed ? "0" : "1");
-  applyPassagesCollapseState();
+  localStorage.setItem("negoceid_collapse_" + bodyId, collapsed ? "0" : "1");
+  applySectionCollapseState(bodyId, btnId);
 }
 
-function applyPassagesCollapseState() {
-  var body = document.getElementById("passagesCollapseBody");
-  var btn = document.getElementById("passagesCollapseBtn");
+function applySectionCollapseState(bodyId, btnId) {
+  var body = document.getElementById(bodyId);
+  var btn = document.getElementById(btnId);
   if (!body || !btn) return;
-  var collapsed = localStorage.getItem("negoceid_passages_collapsed") === "1";
+  var collapsed = localStorage.getItem("negoceid_collapse_" + bodyId) === "1";
   body.style.display = collapsed ? "none" : "";
   btn.textContent = collapsed ? "▸ Afficher" : "▾ Réduire";
 }
 
+function applyAllCollapseStates() {
+  COLLAPSIBLE_SECTIONS.forEach(function(pair) { applySectionCollapseState(pair[0], pair[1]); });
+}
+
 function renderAll() {
   refreshChantiersConnusOptions();
-  applyPassagesCollapseState();
+  applyAllCollapseStates();
   var filteredPassages = getFilteredPassages();
   var actifs = salaries.filter(function(s){return s.statut==="ACTIF";}).length;
   var ok = filteredPassages.filter(function(p){return p.resultat==="AUTORISE";}).length;
