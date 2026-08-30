@@ -2657,6 +2657,14 @@ tr:hover td{background:#FAFBFF}
         </div>
         <div class="photo-actions">
           <input type="file" id="entLogoInput" accept="image/*" onchange="saveEntrepriseLogo(this)">
+          <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
+            <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px">Taille sur le bon de commande</label>
+            <select class="filter-select" id="entLogoTaille" style="max-width:140px" onchange="saveEntrepriseLogoTaille()">
+              <option value="petit">Petit</option>
+              <option value="moyen" selected>Moyen</option>
+              <option value="grand">Grand</option>
+            </select>
+          </div>
           <div><span class="login-link photo-remove-link" onclick="removeEntrepriseLogo()">🗑️ Retirer le logo</span></div>
           <div id="entLogoErr" style="display:none;color:var(--red);font-size:12px;font-weight:600;margin-top:4px"></div>
         </div>
@@ -4216,6 +4224,8 @@ function selectCompany(company) {
   var tab = document.getElementById("tab-"+company.id);
   if (tab) tab.classList.add("active");
   showEntLogoPreview(company.logo_url || null);
+  var tailleSel = document.getElementById("entLogoTaille");
+  if (tailleSel) tailleSel.value = company.logo_taille || "moyen";
   loadData();
   subscribeToPassages();
   loadFournisseurs();
@@ -4258,6 +4268,20 @@ async function saveEntrepriseLogo(input) {
     errEl.style.display = "block";
   } finally {
     input.value = "";
+  }
+}
+
+async function saveEntrepriseLogoTaille() {
+  if (!currentCompany) return;
+  var sel = document.getElementById("entLogoTaille");
+  var taille = sel ? sel.value : "moyen";
+  try {
+    var { data: ok, error } = await supabase.rpc('set_entreprise_logo_taille', { p_company_id: currentCompany.id, p_taille: taille });
+    if (error || !ok) throw (error || new Error("Échec de l'enregistrement"));
+    currentCompany.logo_taille = taille;
+  } catch(e) {
+    console.error("saveEntrepriseLogoTaille error", e);
+    alert("❌ Échec de l'enregistrement de la taille du logo");
   }
 }
 

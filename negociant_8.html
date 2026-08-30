@@ -1250,7 +1250,8 @@ async function buildBonDeCommandeDoc(d) {
     try {
       var dataUrl = await loadImageAsDataUrl(d.entreprise_logo_url);
       var dims = await getImageDims(dataUrl);
-      var maxW = 32, maxH = 18;
+      var tailleBox = { petit: [20, 12], moyen: [32, 18], grand: [45, 25] }[d.entreprise_logo_taille] || [32, 18];
+      var maxW = tailleBox[0], maxH = tailleBox[1];
       var scale = Math.min(maxW / dims.w, maxH / dims.h);
       var imgW = dims.w * scale, imgH = dims.h * scale;
       var fmt = dataUrl.indexOf("image/png") !== -1 ? "PNG" : (dataUrl.indexOf("image/webp") !== -1 ? "WEBP" : "JPEG");
@@ -1260,19 +1261,27 @@ async function buildBonDeCommandeDoc(d) {
     }
   }
 
+  // Titre + numéro de bon dans la colonne de gauche uniquement — le
+  // logo occupe le coin haut-droit (voir plus haut), donc aucun risque
+  // de chevauchement quelle que soit la taille du logo.
   doc.setFont("helvetica", "bold");
   doc.setFontSize(18);
   doc.text("BON DE COMMANDE", marginL, y);
+  y += 7;
   if (d.numero_bon) {
-    doc.setFontSize(13);
-    doc.text("N° " + d.numero_bon, pageW - marginR, y, { align: "right" });
+    doc.setFontSize(12);
+    doc.text("N° " + d.numero_bon, marginL, y);
+    y += 7;
   }
-  y += 6;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
   doc.setTextColor(120);
   doc.text("Négociant destinataire : " + (currentNego || "—"), marginL, y);
-  y += 10;
+  y += 6;
+  // Laisse la place au logo (haut-droit, jusqu'à 18mm de haut à partir de
+  // y=10) avant de reprendre la largeur complète de la page.
+  if (y < 30) y = 30;
+  y += 4;
   doc.setTextColor(20);
 
   var date = d.created_at ? new Date(d.created_at).toLocaleDateString("fr-FR") + " " + new Date(d.created_at).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"}) : "—";
