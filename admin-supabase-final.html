@@ -2614,12 +2614,17 @@ tr:hover td{background:#FAFBFF}
     </div>
     <button class="btn-login" id="choosePlanBtn" onclick="selfGeneratePaymentLink()" style="margin-top:10px">Payer et activer →</button>
     <div class="login-err" id="choosePlanErr" style="display:none"></div>
-    <button class="btn-login" onclick="logout()" style="margin-top:10px;background:transparent;color:var(--muted);box-shadow:none">← Retour à la connexion</button>
+    <button class="btn-login" id="choosePlanBackBtn" onclick="closeChoosePlanScreen()" style="margin-top:10px;background:transparent;color:var(--muted);box-shadow:none">← Retour à la connexion</button>
   </div>
 </div>
 
 <!-- DASHBOARD -->
 <div id="screenDash">
+  <!-- BANNIÈRE ESSAI GRATUIT (entreprise en essai, sans abonnement Stripe) -->
+  <div id="essaiBanner" style="display:none;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:var(--orange-soft);border:1.5px solid var(--orange);border-radius:12px;padding:12px 16px;margin-bottom:20px">
+    <div id="essaiBannerText" style="font-size:13px;font-weight:700;color:var(--orange-dark)"></div>
+    <button class="btn-action btn-gold" onclick="openChoosePlanVoluntary()">💳 Passer à un abonnement payant</button>
+  </div>
   <!-- ONGLETS PRINCIPAUX (super admin uniquement) -->
   <div class="dash-tabs" id="dashTabs" style="display:none">
     <button class="dash-tab active" id="dashTabSalaries" onclick="switchDashView('salaries',this)">👤 Salariés & passages</button>
@@ -3256,6 +3261,7 @@ async function continueLoginAfterAuth() {
       } else {
         document.getElementById("choosePlanSelect").disabled = false;
       }
+      choosePlanVoluntary = false;
       document.getElementById("choosePlanErr").style.display = "none";
       document.getElementById("screenChoosePlan").style.display = "flex";
       return;
@@ -3266,6 +3272,7 @@ async function continueLoginAfterAuth() {
   document.getElementById("screenDash").style.display = "block";
   var isSuperAdmin = currentUser.role === "super_admin";
   document.getElementById("dashTabs").style.display = isSuperAdmin ? "flex" : "none";
+  updateEssaiBanner(isSuperAdmin ? null : myComp);
   switchDashView("salaries", document.getElementById("dashTabSalaries"));
   renderCompanyBar();
   renderCompaniesSection();
@@ -3674,6 +3681,14 @@ function renderCompaniesSection() {
     var planSelect = '<select class="filter-select" style="font-size:12px;padding:6px 8px;min-width:120px" onchange="updateCompanyPlan(\''+escJsAttr(c.id)+'\', this.value)">'+planOptions+'</select>';
     var siretCell = esc(c.siret||"—")+' <button class="btn-tbl" onclick="editCompanySiret(\''+escJsAttr(c.id)+'\')" title="Modifier le SIRET">✏️</button>';
     var soustraitantTag = c.est_sous_traitant ? ' <span class="pill pill-gold" title="Compte Indépendant auto-inscrit (sous-traitant)">🧰 Indépendant</span>' : '';
+    // Distingue un essai gratuit en cours (14 jours à l'inscription, voir
+    // migration 111 — a une date de fin) d'un accès offert manuellement
+    // via "🎁 Offrir" (illimité, pas de date de fin) — les deux sont
+    // "actif" sans stripe_subscription_id, seule la date de fin diffère.
+    var essaiEnCours = statut === "actif" && !c.stripe_subscription_id && c.essai_expire_le && new Date(c.essai_expire_le).getTime() > Date.now();
+    var sansStripeTag = essaiEnCours
+      ? ' <span class="pill pill-purple" title="Essai gratuit en cours, sans carte bancaire">⏳ Essai jusqu\'au '+esc(new Date(c.essai_expire_le).toLocaleDateString("fr-FR"))+'</span>'
+      : (statut === "actif" && !c.stripe_subscription_id ? ' <span class="pill pill-purple" title="Aucun paiement Stripe en cours">🎁 Offert</span>' : '');
     return '<tr>'+
       '<td>'+esc(c.nom)+soustraitantTag+'</td>'+
       '<td>'+esc(c.email_admin||"—")+'</td>'+
@@ -3681,7 +3696,7 @@ function renderCompaniesSection() {
       '<td>'+siretCell+'</td>'+
       '<td>'+deptSelect+'</td>'+
       '<td>'+planSelect+'</td>'+
-      '<td><span class="pill '+pillClass+'">'+statutLabel+'</span>'+(statut === "actif" && !c.stripe_subscription_id ? ' <span class="pill pill-purple" title="Aucun paiement Stripe en cours">🎁 Offert</span>' : '')+'</td>'+
+      '<td><span class="pill '+pillClass+'">'+statutLabel+'</span>'+sansStripeTag+'</td>'+
       '<td>'+actionBtn+' '+deleteBtn+'</td>'+
     '</tr>';
   }).join("");
@@ -3822,6 +3837,47 @@ async function generatePaymentLink() {
   } catch(e) {
     btn.disabled = false; btn.textContent = "💳 Générer le lien";
     alert("❌ Erreur : " + frError(e));
+  }
+}
+
+// ── ESSAI GRATUIT (2 semaines à l'inscription, voir migration 111) ──
+// Affiche une bannière non bloquante tant que l'entreprise est en
+// essai (statut actif, sans abonnement Stripe) — elle garde un accès
+// complet, la bannière sert juste à l'informer et lui permettre de
+// passer au payant plus tôt si elle le souhaite.
+function updateEssaiBanner(comp) {
+  var el = document.getElementById("essaiBanner");
+  if (!el) return;
+  if (!comp || !comp.essai_expire_le || comp.stripe_subscription_id) { el.style.display = "none"; return; }
+  var expireDate = new Date(comp.essai_expire_le);
+  if (isNaN(expireDate.getTime()) || expireDate.getTime() < Date.now()) { el.style.display = "none"; return; }
+  var joursRestants = Math.max(1, Math.ceil((expireDate.getTime() - Date.now()) / 86400000));
+  document.getElementById("essaiBannerText").textContent = "🎁 Essai gratuit — " + joursRestants + (joursRestants > 1 ? " jours restants" : " jour restant") + " (jusqu'au " + expireDate.toLocaleDateString("fr-FR") + ")";
+  el.style.display = "flex";
+}
+
+// Contrairement au parcours forcé (compte en_attente/impayé/résilié, où
+// "← Retour" déconnecte puisqu'il n'y a rien d'autre à voir), ouvrir
+// l'écran de paiement DEPUIS la bannière d'essai doit pouvoir revenir au
+// tableau de bord normalement — l'entreprise a toujours accès, elle
+// choisit juste de passer au payant plus tôt.
+var choosePlanVoluntary = false;
+function openChoosePlanVoluntary() {
+  choosePlanVoluntary = true;
+  document.getElementById("choosePlanIcon").textContent = "💳";
+  document.getElementById("choosePlanTitle").textContent = "Passer à un abonnement payant";
+  document.getElementById("choosePlanText").textContent = "Choisissez votre formule pour continuer au-delà de votre essai gratuit.";
+  document.getElementById("choosePlanSelect").disabled = false;
+  document.getElementById("choosePlanErr").style.display = "none";
+  document.getElementById("screenDash").style.display = "none";
+  document.getElementById("screenChoosePlan").style.display = "flex";
+}
+function closeChoosePlanScreen() {
+  if (choosePlanVoluntary) {
+    document.getElementById("screenChoosePlan").style.display = "none";
+    document.getElementById("screenDash").style.display = "block";
+  } else {
+    logout();
   }
 }
 
