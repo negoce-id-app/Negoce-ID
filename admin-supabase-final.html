@@ -3487,7 +3487,12 @@ function renderNegociantsSection() {
     return;
   }
   try {
-    var baseUrl = window.location.origin + window.location.pathname.replace(/admin-supabase-final\.html$/, "");
+    // Domaine fixé en dur (et non dérivé de window.location) : le QR doit
+    // encoder une URL utilisable par n'importe quel téléphone qui le
+    // scanne, quel que soit l'endroit depuis lequel CET admin est ouvert
+    // (local, aperçu, autre sous-dossier...). Même domaine que celui déjà
+    // utilisé dans l'e-mail de bienvenue négociant (create-negociant).
+    var baseUrl = "https://negoce-id.fr/";
     body.innerHTML = list.map(function(n) {
       var link = baseUrl + "negociant_8.html?nego=" + encodeURIComponent(n.agence);
       var uid = escJsAttr(n.auth_user_id);
