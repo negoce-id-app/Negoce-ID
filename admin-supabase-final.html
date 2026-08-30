@@ -2674,27 +2674,30 @@ tr:hover td{background:#FAFBFF}
         <div class="section-title">📋 Historique des passages</div>
         <div class="section-actions">
           <button class="btn-action btn-outline" onclick="exportCSV('passages')">⬇️ Export CSV</button>
+          <button class="btn-action btn-outline" id="passagesCollapseBtn" onclick="togglePassagesHistorique()">▾ Réduire</button>
         </div>
       </div>
-      <div class="filter-row">
-        <select class="filter-select" id="filterSalarie" onchange="renderAll()">
-          <option value="all">Recherche par salarié — tous</option>
-        </select>
-        <select class="filter-select" id="filterChantier" onchange="renderAll()">
-          <option value="all">Recherche par chantier — tous</option>
-        </select>
+      <div id="passagesCollapseBody">
+        <div class="filter-row">
+          <select class="filter-select" id="filterSalarie" onchange="renderAll()">
+            <option value="all">Recherche par salarié — tous</option>
+          </select>
+          <select class="filter-select" id="filterChantier" onchange="renderAll()">
+            <option value="all">Recherche par chantier — tous</option>
+          </select>
+        </div>
+        <div class="filter-row">
+          <input class="filter-select" type="date" id="filterDateDebut" style="min-width:150px">
+          <span style="color:var(--muted);font-size:13px;align-self:center">→</span>
+          <input class="filter-select" type="date" id="filterDateFin" style="min-width:150px">
+          <button class="btn-action btn-outline" onclick="loadPassages()">🔍 Rechercher sur la période</button>
+          <button class="btn-action btn-outline" onclick="reinitialiserPeriodePassages()">✕ Réinitialiser</button>
+        </div>
+        <div class="table-scroll"><table>
+          <thead><tr><th>Date / Heure</th><th>Code</th><th>Salarié</th><th>Nom de l'agence</th><th>Chantier</th><th>N° de suivi</th><th>Document</th><th>Résultat</th></tr></thead>
+          <tbody id="passagesBody"><tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px">⏳ Chargement...</td></tr></tbody>
+        </table></div>
       </div>
-      <div class="filter-row">
-        <input class="filter-select" type="date" id="filterDateDebut" style="min-width:150px">
-        <span style="color:var(--muted);font-size:13px;align-self:center">→</span>
-        <input class="filter-select" type="date" id="filterDateFin" style="min-width:150px">
-        <button class="btn-action btn-outline" onclick="loadPassages()">🔍 Rechercher sur la période</button>
-        <button class="btn-action btn-outline" onclick="reinitialiserPeriodePassages()">✕ Réinitialiser</button>
-      </div>
-      <div class="table-scroll"><table>
-        <thead><tr><th>Date / Heure</th><th>Code</th><th>Salarié</th><th>Nom de l'agence</th><th>Chantier</th><th>N° de suivi</th><th>Document</th><th>Résultat</th></tr></thead>
-        <tbody id="passagesBody"><tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px">⏳ Chargement...</td></tr></tbody>
-      </table></div>
     </div>
 
     <!-- HEURES DE TRAVAIL -->
@@ -2721,8 +2724,8 @@ tr:hover td{background:#FAFBFF}
         <button class="btn-action btn-outline" onclick="reinitialiserPeriodeHeures()">✕ Réinitialiser</button>
       </div>
       <div class="table-scroll"><table>
-        <thead><tr><th>Date</th><th>Code</th><th>Salarié</th><th>Chantier</th><th>Horaires</th><th>Total</th><th>Note</th></tr></thead>
-        <tbody id="heuresBody"><tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">⏳ Chargement...</td></tr></tbody>
+        <thead><tr><th>Date</th><th>Code</th><th>Salarié</th><th>Chantier</th><th>Horaires</th><th>Total</th><th>Note</th><th>Actions</th></tr></thead>
+        <tbody id="heuresBody"><tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px">⏳ Chargement...</td></tr></tbody>
       </table></div>
     </div>
 
@@ -2900,6 +2903,43 @@ tr:hover td{background:#FAFBFF}
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeModal('modalSalarie')">Annuler</button>
       <button class="btn-save" onclick="saveSalarie()">💾 Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODIFIER UNE LIGNE D'HEURES DE TRAVAIL -->
+<div class="modal-bg" id="modalEditHeure">
+  <div class="modal">
+    <div class="modal-title">Modifier les heures</div>
+    <input type="hidden" id="hrsEditId">
+    <div class="form-group">
+      <label class="form-lbl">Salarié</label>
+      <input class="form-in" id="hrsEditSalarie" type="text" disabled>
+    </div>
+    <div class="form-group">
+      <label class="form-lbl">Date</label>
+      <input class="form-in" id="hrsEditDate" type="date">
+    </div>
+    <div class="form-group">
+      <label class="form-lbl">Chantier</label>
+      <input class="form-in" id="hrsEditChantier" type="text">
+    </div>
+    <div class="form-group">
+      <label class="form-lbl">Heure début</label>
+      <input class="form-in" id="hrsEditDebut" type="time">
+    </div>
+    <div class="form-group">
+      <label class="form-lbl">Heure fin</label>
+      <input class="form-in" id="hrsEditFin" type="time">
+    </div>
+    <div class="form-group">
+      <label class="form-lbl">Note <span style="text-transform:none;font-weight:500;color:var(--muted)">(optionnel)</span></label>
+      <input class="form-in" id="hrsEditNote" type="text">
+    </div>
+    <div id="hrsEditErr" style="display:none;color:var(--red);font-size:12px;font-weight:600;margin-top:6px"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('modalEditHeure')">Annuler</button>
+      <button class="btn-save" onclick="saveEditHeure()">💾 Enregistrer</button>
     </div>
   </div>
 </div>
@@ -4784,7 +4824,7 @@ function renderHeuresBody() {
   var hb = document.getElementById("heuresBody");
   if (!hb) return;
   if (filtered.length === 0) {
-    hb.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">Aucune heure saisie</td></tr>';
+    hb.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px">Aucune heure saisie</td></tr>';
     return;
   }
   hb.innerHTML = filtered.map(function(h) {
@@ -4798,12 +4838,102 @@ function renderHeuresBody() {
       '<td style="font-size:12px">'+horaires+'</td>'+
       '<td><strong>'+(Number(h.heures)||0).toFixed(2).replace(".",",")+' h</strong></td>'+
       '<td style="font-size:12px;color:var(--muted)">'+esc(h.note||"—")+'</td>'+
+      '<td>'+
+        '<button class="btn-tbl" onclick="editHeure('+h.id+')">✏️</button>'+
+        '<button class="btn-tbl danger" onclick="deleteHeure('+h.id+')" title="Supprimer définitivement">🗑️</button>'+
+      '</td>'+
     '</tr>';
   }).join("");
 }
 
+// ── Modification / suppression d'une ligne d'heures par l'admin (le
+// salarié, lui, ne peut ni modifier ni supprimer — voir negoceid-117) ──
+function editHeure(id) {
+  var h = heuresTravail.find(function(x){ return x.id === id; });
+  if (!h) return;
+  document.getElementById("hrsEditErr").style.display = "none";
+  document.getElementById("hrsEditId").value = h.id;
+  document.getElementById("hrsEditSalarie").value = (h.nom_salarie||h.code_salarie) + " (" + h.code_salarie + ")";
+  document.getElementById("hrsEditDate").value = h.date_travail || "";
+  document.getElementById("hrsEditChantier").value = h.chantier || "";
+  document.getElementById("hrsEditDebut").value = (h.heure_debut||"").slice(0,5);
+  document.getElementById("hrsEditFin").value = (h.heure_fin||"").slice(0,5);
+  document.getElementById("hrsEditNote").value = h.note || "";
+  document.getElementById("modalEditHeure").classList.add("open");
+}
+
+async function saveEditHeure() {
+  var id = Number(document.getElementById("hrsEditId").value);
+  var date = document.getElementById("hrsEditDate").value;
+  var chantier = document.getElementById("hrsEditChantier").value.trim();
+  var debut = document.getElementById("hrsEditDebut").value;
+  var fin = document.getElementById("hrsEditFin").value;
+  var note = document.getElementById("hrsEditNote").value.trim();
+  var errEl = document.getElementById("hrsEditErr");
+  errEl.style.display = "none";
+  if (!date || !chantier || !debut || !fin) {
+    errEl.textContent = "❌ Date, chantier et horaires sont obligatoires";
+    errEl.style.display = "block";
+    return;
+  }
+  if (fin <= debut) {
+    errEl.textContent = "❌ L'heure de fin doit être après l'heure de début";
+    errEl.style.display = "block";
+    return;
+  }
+  try {
+    var { error } = await supabase.from('heures_travail').update({
+      date_travail: date,
+      chantier: chantier,
+      heure_debut: debut,
+      heure_fin: fin,
+      note: note || null
+    }).eq('id', id);
+    if (error) throw error;
+    closeModal('modalEditHeure');
+    await loadHeuresTravail();
+  } catch(e) {
+    console.error("saveEditHeure error", e);
+    errEl.textContent = "❌ " + (e && e.message ? e.message : "Échec de l'enregistrement");
+    errEl.style.display = "block";
+  }
+}
+
+async function deleteHeure(id) {
+  if (!confirm("Supprimer définitivement cette ligne d'heures ?")) return;
+  try {
+    var { error } = await supabase.from('heures_travail').delete().eq('id', id);
+    if (error) throw error;
+    await loadHeuresTravail();
+  } catch(e) {
+    console.error("deleteHeure error", e);
+    alert("❌ Échec de la suppression : " + (e && e.message ? e.message : ""));
+  }
+}
+
+// ── Repli/dépli de l'historique des passages (liste qui peut vite
+// devenir longue) — état mémorisé localement pour rester replié d'une
+// session à l'autre si l'admin le préfère ainsi.
+function togglePassagesHistorique() {
+  var body = document.getElementById("passagesCollapseBody");
+  if (!body) return;
+  var collapsed = body.style.display === "none";
+  localStorage.setItem("negoceid_passages_collapsed", collapsed ? "0" : "1");
+  applyPassagesCollapseState();
+}
+
+function applyPassagesCollapseState() {
+  var body = document.getElementById("passagesCollapseBody");
+  var btn = document.getElementById("passagesCollapseBtn");
+  if (!body || !btn) return;
+  var collapsed = localStorage.getItem("negoceid_passages_collapsed") === "1";
+  body.style.display = collapsed ? "none" : "";
+  btn.textContent = collapsed ? "▸ Afficher" : "▾ Réduire";
+}
+
 function renderAll() {
   refreshChantiersConnusOptions();
+  applyPassagesCollapseState();
   var filteredPassages = getFilteredPassages();
   var actifs = salaries.filter(function(s){return s.statut==="ACTIF";}).length;
   var ok = filteredPassages.filter(function(p){return p.resultat==="AUTORISE";}).length;
