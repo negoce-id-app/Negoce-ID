@@ -2642,6 +2642,27 @@ tr:hover td{background:#FAFBFF}
       </div>
     </div>
 
+    <!-- LOGO DE L'ENTREPRISE -->
+    <div class="section" style="margin-bottom:20px">
+      <div class="section-hdr">
+        <div class="section-title">🏢 Logo de l'entreprise</div>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px">
+        Affiché sur les bons de commande imprimés/téléchargés par les négociants. Optionnel.
+      </div>
+      <div class="photo-row">
+        <div class="photo-preview-wrap" id="entLogoPreviewWrap">
+          <span id="entLogoEmoji" style="font-size:22px">🏢</span>
+          <img id="entLogoPreview" src="" alt="">
+        </div>
+        <div class="photo-actions">
+          <input type="file" id="entLogoInput" accept="image/*" onchange="saveEntrepriseLogo(this)">
+          <div><span class="login-link photo-remove-link" onclick="removeEntrepriseLogo()">🗑️ Retirer le logo</span></div>
+          <div id="entLogoErr" style="display:none;color:var(--red);font-size:12px;font-weight:600;margin-top:4px"></div>
+        </div>
+      </div>
+    </div>
+
     <!-- KPIs -->
     <div class="kpi-grid">
       <div class="kpi"><div class="kpi-icon">👤</div><div class="kpi-val" id="kpiSal">—</div><div class="kpi-lbl">Salariés actifs</div></div>
@@ -4194,10 +4215,64 @@ function selectCompany(company) {
   document.querySelectorAll(".company-tab").forEach(function(t){t.classList.remove("active");});
   var tab = document.getElementById("tab-"+company.id);
   if (tab) tab.classList.add("active");
+  showEntLogoPreview(company.logo_url || null);
   loadData();
   subscribeToPassages();
   loadFournisseurs();
   loadSousTraitants();
+}
+
+// ── LOGO DE L'ENTREPRISE (affiché sur les bons de commande PDF côté
+// négociant — voir negoceid-120) ──
+function showEntLogoPreview(url) {
+  var img = document.getElementById("entLogoPreview");
+  var emoji = document.getElementById("entLogoEmoji");
+  if (!img || !emoji) return;
+  if (url) { img.src = url; img.style.display = "block"; emoji.style.display = "none"; }
+  else { img.src = ""; img.style.display = "none"; emoji.style.display = "block"; }
+}
+
+async function saveEntrepriseLogo(input) {
+  var file = input.files[0];
+  if (!file) return;
+  var errEl = document.getElementById("entLogoErr");
+  errEl.style.display = "none";
+  if (!currentCompany) { alert("❌ Aucune entreprise sélectionnée."); input.value = ""; return; }
+  if (!/^image\//.test(file.type)) { errEl.textContent = "❌ Merci de choisir une image"; errEl.style.display = "block"; input.value = ""; return; }
+  if (file.size > 3 * 1024 * 1024) { errEl.textContent = "❌ Image trop lourde (max 3 Mo)"; errEl.style.display = "block"; input.value = ""; return; }
+  try {
+    var ext = (file.name.split(".").pop() || "png").toLowerCase().replace(/[^a-z0-9]/g, "") || "png";
+    var path = currentCompany.id + "/logo." + ext;
+    var { error: upErr } = await supabase.storage.from("entreprise-logos").upload(path, file, { upsert: true, contentType: file.type });
+    if (upErr) throw upErr;
+    var { data: pub } = supabase.storage.from("entreprise-logos").getPublicUrl(path);
+    if (!pub || !pub.publicUrl) throw new Error("Image envoyée mais URL introuvable");
+    var newUrl = pub.publicUrl + "?t=" + Date.now();
+    var { data: ok, error: rpcErr } = await supabase.rpc('set_entreprise_logo', { p_company_id: currentCompany.id, p_logo_url: newUrl });
+    if (rpcErr || !ok) throw (rpcErr || new Error("Échec de l'enregistrement du logo"));
+    currentCompany.logo_url = newUrl;
+    showEntLogoPreview(newUrl);
+  } catch(e) {
+    console.error("saveEntrepriseLogo error", e);
+    errEl.textContent = "❌ " + (e && e.message ? e.message : "Échec de l'envoi");
+    errEl.style.display = "block";
+  } finally {
+    input.value = "";
+  }
+}
+
+async function removeEntrepriseLogo() {
+  if (!currentCompany) return;
+  if (!confirm("Retirer le logo de l'entreprise ?")) return;
+  try {
+    var { data: ok, error } = await supabase.rpc('set_entreprise_logo', { p_company_id: currentCompany.id, p_logo_url: null });
+    if (error || !ok) throw (error || new Error("Échec de la suppression"));
+    currentCompany.logo_url = null;
+    showEntLogoPreview(null);
+  } catch(e) {
+    console.error("removeEntrepriseLogo error", e);
+    alert("❌ Échec de la suppression du logo");
+  }
 }
 
 // ── FOURNISSEURS (liste de négociants proposée aux salariés pour l'écran "Demande") ──

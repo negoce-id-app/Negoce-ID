@@ -2995,7 +2995,7 @@ async function loadMesDemandes() {
         lignesHtml+
         adresseHtml+
         remarqueHtml+
-        '<div class="dmd-item-meta">'+date+(d.chantier?' · 🏗️ '+esc(d.chantier):'')+'</div>'+
+        '<div class="dmd-item-meta">'+(d.numero_bon?'N° '+esc(d.numero_bon)+' · ':'')+date+(d.chantier?' · 🏗️ '+esc(d.chantier):'')+'</div>'+
         reponseBlock+
       '</div>';
     }).join("");

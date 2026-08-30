@@ -1187,7 +1187,7 @@ async function loadDemandesNego() {
         lignesNegoHtml+
         adresseNegoHtml+
         remarqueNegoHtml+
-        '<div class="dmn-meta">'+date+(d.chantier?' · 🏗️ '+esc(d.chantier):'')+' · '+esc(d.code_salarie)+'</div>'+
+        '<div class="dmn-meta">'+(d.numero_bon?'N° '+esc(d.numero_bon)+' · ':'')+date+(d.chantier?' · 🏗️ '+esc(d.chantier):'')+' · '+esc(d.code_salarie)+'</div>'+
         '<div class="dmn-doc-actions">'+
           '<button class="dmn-doc-btn" onclick="imprimerBonDeCommande('+d.id+')">🖨️ Imprimer</button>'+
           '<button class="dmn-doc-btn" onclick="telechargerBonDeCommande('+d.id+')">⬇️ Télécharger</button>'+
@@ -1201,12 +1201,38 @@ async function loadDemandesNego() {
   }
 }
 
+// Convertit une image publique (Storage) en dataURL, pour pouvoir
+// l'embarquer dans le PDF via jsPDF (addImage attend une dataURL, pas
+// une simple URL distante). Échec silencieux (logo simplement omis) —
+// jamais bloquant pour la génération du bon de commande.
+function loadImageAsDataUrl(url) {
+  return fetch(url)
+    .then(function(res) { if (!res.ok) throw new Error("logo introuvable"); return res.blob(); })
+    .then(function(blob) {
+      return new Promise(function(resolve, reject) {
+        var reader = new FileReader();
+        reader.onload = function() { resolve(reader.result); };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    });
+}
+
+function getImageDims(dataUrl) {
+  return new Promise(function(resolve, reject) {
+    var img = new Image();
+    img.onload = function() { resolve({ w: img.naturalWidth, h: img.naturalHeight }); };
+    img.onerror = reject;
+    img.src = dataUrl;
+  });
+}
+
 // ── Bon de commande en PDF (imprimable + téléchargeable) ──
 // Un seul document construit via jsPDF, réutilisé pour les deux
 // actions : "Imprimer" l'ouvre dans un nouvel onglet avec le dialogue
 // d'impression déclenché automatiquement (autoPrint) ; "Télécharger"
 // l'enregistre directement sur l'appareil.
-function buildBonDeCommandeDoc(d) {
+async function buildBonDeCommandeDoc(d) {
   var jsPDFCtor = window.jspdf && window.jspdf.jsPDF;
   if (!jsPDFCtor) { alert("❌ Le générateur de PDF n'a pas pu se charger — vérifiez votre connexion et réessayez."); return null; }
   var doc = new jsPDFCtor({ unit: "mm", format: "a4" });
@@ -1218,9 +1244,29 @@ function buildBonDeCommandeDoc(d) {
     if (y + next > pageH - 18) { doc.addPage(); y = 22; }
   }
 
+  // Logo de l'entreprise (si renseigné) — en haut à droite, taille
+  // proportionnelle conservée.
+  if (d.entreprise_logo_url) {
+    try {
+      var dataUrl = await loadImageAsDataUrl(d.entreprise_logo_url);
+      var dims = await getImageDims(dataUrl);
+      var maxW = 32, maxH = 18;
+      var scale = Math.min(maxW / dims.w, maxH / dims.h);
+      var imgW = dims.w * scale, imgH = dims.h * scale;
+      var fmt = dataUrl.indexOf("image/png") !== -1 ? "PNG" : (dataUrl.indexOf("image/webp") !== -1 ? "WEBP" : "JPEG");
+      doc.addImage(dataUrl, fmt, pageW - marginR - imgW, 10, imgW, imgH);
+    } catch (e) {
+      console.error("logo PDF error", e);
+    }
+  }
+
   doc.setFont("helvetica", "bold");
   doc.setFontSize(18);
   doc.text("BON DE COMMANDE", marginL, y);
+  if (d.numero_bon) {
+    doc.setFontSize(13);
+    doc.text("N° " + d.numero_bon, pageW - marginR, y, { align: "right" });
+  }
   y += 6;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
@@ -1309,22 +1355,23 @@ function buildBonDeCommandeDoc(d) {
 
 function bonDeCommandeFilename(d) {
   var date = d.created_at ? new Date(d.created_at).toISOString().slice(0,10) : "date-inconnue";
-  return "bon-commande_" + (d.code_salarie || "salarie") + "_" + date + ".pdf";
+  var num = d.numero_bon ? "N" + d.numero_bon + "_" : "";
+  return "bon-commande_" + num + (d.code_salarie || "salarie") + "_" + date + ".pdf";
 }
 
-function imprimerBonDeCommande(id) {
+async function imprimerBonDeCommande(id) {
   var d = demandesNegoCache.find(function(x){ return x.id === id; });
   if (!d) return;
-  var doc = buildBonDeCommandeDoc(d);
+  var doc = await buildBonDeCommandeDoc(d);
   if (!doc) return;
   doc.autoPrint();
   window.open(doc.output("bloburl"), "_blank");
 }
 
-function telechargerBonDeCommande(id) {
+async function telechargerBonDeCommande(id) {
   var d = demandesNegoCache.find(function(x){ return x.id === id; });
   if (!d) return;
-  var doc = buildBonDeCommandeDoc(d);
+  var doc = await buildBonDeCommandeDoc(d);
   if (!doc) return;
   doc.save(bonDeCommandeFilename(d));
 }
