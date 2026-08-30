@@ -1552,7 +1552,8 @@ async function showResult(code, pin) {
   var blFileBtnEl0 = document.getElementById("blFileBtn");
   if (blFileBtnEl0) { blFileBtnEl0.disabled = false; blFileBtnEl0.textContent = "📷 Prendre une photo ou joindre un fichier"; }
   window._currentAuthorizedChantiers = (user && Array.isArray(user.chantiers)) ? user.chantiers : [];
-  renderChantierField(window._currentAuthorizedChantiers, window._currentChantiersExternes);
+  window._currentScannedCode = user ? user.code : null;
+  renderChantierField(window._currentAuthorizedChantiers, window._currentChantiersExternes, window._currentScannedCode);
   document.getElementById("chantierErr").style.display = "none";
   var bonLivraisonErrEl0 = document.getElementById("bonLivraisonErr");
   if (bonLivraisonErrEl0) bonLivraisonErrEl0.style.display = "none";
@@ -1575,6 +1576,20 @@ async function showResult(code, pin) {
 // qui l'appellent encore dans le HTML.
 function cancelAutoReset() {}
 
+// Gère le choix "✏️ Autre (chantier non listé)" dans le menu déroulant des
+// chantiers connus (registre negoceid-122) : bascule le champ en saisie
+// libre, avec un lien pour revenir au menu déroulant.
+function handleChantierInputChangeNego(sel) {
+  cancelAutoReset();
+  var errEl = document.getElementById("chantierErr");
+  if (errEl) errEl.style.display = "none";
+  if (sel.value === "__autre__") {
+    var wrap = document.getElementById("chantierFieldWrap");
+    wrap.innerHTML = '<input class="bl-input" id="chantierInput" type="text" placeholder="Nom du chantier" autocomplete="off" autocorrect="off" spellcheck="false" onfocus="cancelAutoReset()" oninput="document.getElementById(\'chantierErr\').style.display=\'none\'">'+
+      '<span style="font-size:11px;color:var(--orange-dark);font-weight:700;cursor:pointer;display:inline-block;margin-top:6px" onclick="renderChantierField(window._currentAuthorizedChantiers, window._currentChantiersExternes, window._currentScannedCode)">← Revenir à la liste</span>';
+  }
+}
+
 // Détecte les valeurs signifiant "aucune restriction de chantier" saisies côté admin :
 // "Tous", "Tous chantiers", "Tous les chantiers", "Toutes", etc. (tout ce qui commence
 // par "tous"/"toutes"), pour éviter de dépendre d'une formulation exacte.
@@ -1593,16 +1608,39 @@ function isTousChantiersValue(c) {
 // "chantiers" ici vient de log_passage (déjà fusionné avec les chantiers
 // prêtés) : on retire de la liste "propre" ce qui est aussi dans
 // "externes" pour ne jamais l'afficher deux fois.
-function renderChantierField(chantiers, externes) {
+// Note : liste "Autre" incluse pour "Tous chantiers" — voir
+// list_chantiers_entreprise (negoceid-122), même registre que celui
+// utilisé côté salarié (Bon de commande / Mes heures). Évite au
+// négociant de devoir taper le nom du chantier à la main (source
+// d'erreurs de frappe qui compliquent ensuite les rapprochements).
+async function renderChantierField(chantiers, externes, code) {
   var wrap = document.getElementById("chantierFieldWrap");
   if (!wrap) return;
   var ext = Array.isArray(externes) ? externes : [];
   var externeNames = ext.map(function(e){ return e.chantier; });
   var list = (Array.isArray(chantiers) ? chantiers : []).filter(function(c){ return externeNames.indexOf(c) === -1; });
   var isUnrestricted = list.some(isTousChantiersValue);
+  function escOpt(s) { return String(s).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;"); }
 
   if (isUnrestricted) {
-    wrap.innerHTML = '<input class="bl-input" id="chantierInput" type="text" placeholder="Nom du chantier" autocomplete="off" autocorrect="off" spellcheck="false" onfocus="cancelAutoReset()" oninput="document.getElementById(\'chantierErr\').style.display=\'none\'">';
+    wrap.innerHTML = '<select class="bl-input" id="chantierInput" disabled style="letter-spacing:0;text-transform:none;opacity:0.5"><option value="">⏳ Chargement...</option></select>';
+    var connus = [];
+    try {
+      var { data, error } = await supabase.rpc('list_chantiers_entreprise', { p_code: code });
+      if (error) throw error;
+      connus = Array.isArray(data) ? data.map(function(r){ return r.chantier; }).filter(Boolean) : [];
+    } catch(e) {
+      console.error("list_chantiers_entreprise error", e);
+    }
+    if (connus.length === 0) {
+      wrap.innerHTML = '<input class="bl-input" id="chantierInput" type="text" placeholder="Nom du chantier" autocomplete="off" autocorrect="off" spellcheck="false" onfocus="cancelAutoReset()" oninput="document.getElementById(\'chantierErr\').style.display=\'none\'">';
+      return;
+    }
+    var optsU = '<option value="">— Choisir le chantier —</option>' + connus.map(function(c){
+      var e = escOpt(c);
+      return '<option value="'+e+'">'+e+'</option>';
+    }).join("") + '<option value="__autre__">✏️ Autre (chantier non listé)</option>';
+    wrap.innerHTML = '<select class="bl-input" id="chantierInput" onfocus="cancelAutoReset()" onchange="handleChantierInputChangeNego(this)" style="letter-spacing:0;text-transform:none">'+optsU+'</select>';
     return;
   }
   if (list.length === 0 && ext.length === 0) {
