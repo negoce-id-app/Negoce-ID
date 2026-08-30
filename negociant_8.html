@@ -10,6 +10,9 @@
 <title>NégoceID — Espace Négociant</title>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<!-- jsPDF : génère le bon de commande en PDF imprimable et téléchargeable —
+     voir buildBonDeCommandeDoc() plus bas. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -156,6 +159,8 @@ body{font-family:'Inter',sans-serif;background:var(--bg);display:flex;flex-direc
 .dmn-statut.traitee{background:var(--green-bg);color:var(--green)}
 .dmn-msg{font-size:13px;color:#374151;font-weight:600}
 .dmn-meta{font-size:11px;color:var(--muted)}
+.dmn-doc-actions{display:flex;gap:8px;margin-top:2px}
+.dmn-doc-btn{flex-shrink:0;padding:6px 12px;border:1.5px solid var(--border);background:transparent;border-radius:8px;font-size:11px;font-weight:700;color:var(--navy);cursor:pointer}
 .dmn-btn{align-self:flex-start;margin-top:2px;padding:6px 12px;border:1.5px solid var(--border);background:transparent;border-radius:8px;font-size:11px;font-weight:700;color:var(--navy);cursor:pointer}
 .dmn-reply-box{display:flex;flex-direction:column;gap:6px;margin-top:4px}
 .dmn-reply-in{width:100%;padding:10px 12px;border:2px solid var(--border);border-radius:10px;font-size:13px;font-family:inherit;color:var(--navy);background:var(--white);resize:vertical;min-height:56px;-webkit-appearance:none}
@@ -1133,6 +1138,11 @@ function switchTab(tab, el) {
   if (tab === "scan") { focusManualInput(); loadTodayStats(); }
 }
 
+// Cache de la dernière liste chargée — sert à retrouver une demande par id
+// pour l'impression/le téléchargement sans refaire un appel réseau (voir
+// imprimerBonDeCommande/telechargerBonDeCommande).
+var demandesNegoCache = [];
+
 async function loadDemandesNego() {
   var list = document.getElementById("demandesList");
   list.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted)">⏳ Chargement...</div>';
@@ -1140,6 +1150,7 @@ async function loadDemandesNego() {
     var { data, error } = await supabase.rpc('get_demandes_for_my_agence');
     if (error) throw error;
     var demandes = Array.isArray(data) ? data : [];
+    demandesNegoCache = demandes;
     if (demandes.length === 0) {
       list.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted)">📭 Aucune demande reçue</div>';
       return;
@@ -1177,6 +1188,10 @@ async function loadDemandesNego() {
         adresseNegoHtml+
         remarqueNegoHtml+
         '<div class="dmn-meta">'+date+(d.chantier?' · 🏗️ '+esc(d.chantier):'')+' · '+esc(d.code_salarie)+'</div>'+
+        '<div class="dmn-doc-actions">'+
+          '<button class="dmn-doc-btn" onclick="imprimerBonDeCommande('+d.id+')">🖨️ Imprimer</button>'+
+          '<button class="dmn-doc-btn" onclick="telechargerBonDeCommande('+d.id+')">⬇️ Télécharger</button>'+
+        '</div>'+
         replyBlock+
       '</div>';
     }).join("");
@@ -1184,6 +1199,134 @@ async function loadDemandesNego() {
     console.error("loadDemandesNego error", e);
     list.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted)">⚠️ Erreur de chargement</div>';
   }
+}
+
+// ── Bon de commande en PDF (imprimable + téléchargeable) ──
+// Un seul document construit via jsPDF, réutilisé pour les deux
+// actions : "Imprimer" l'ouvre dans un nouvel onglet avec le dialogue
+// d'impression déclenché automatiquement (autoPrint) ; "Télécharger"
+// l'enregistre directement sur l'appareil.
+function buildBonDeCommandeDoc(d) {
+  var jsPDFCtor = window.jspdf && window.jspdf.jsPDF;
+  if (!jsPDFCtor) { alert("❌ Le générateur de PDF n'a pas pu se charger — vérifiez votre connexion et réessayez."); return null; }
+  var doc = new jsPDFCtor({ unit: "mm", format: "a4" });
+  var pageH = doc.internal.pageSize.getHeight();
+  var marginL = 18, marginR = 18, y = 22;
+  var pageW = doc.internal.pageSize.getWidth();
+
+  function ensureSpace(next) {
+    if (y + next > pageH - 18) { doc.addPage(); y = 22; }
+  }
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(18);
+  doc.text("BON DE COMMANDE", marginL, y);
+  y += 6;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.setTextColor(120);
+  doc.text("Négociant destinataire : " + (currentNego || "—"), marginL, y);
+  y += 10;
+  doc.setTextColor(20);
+
+  var date = d.created_at ? new Date(d.created_at).toLocaleDateString("fr-FR") + " " + new Date(d.created_at).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"}) : "—";
+  var infos = [
+    ["Entreprise", d.entreprise_nom || "—"],
+    ["Salarié", (d.nom_salarie || d.code_salarie) + " (" + d.code_salarie + ")"],
+    ["Date d'envoi", date],
+    ["Chantier", d.chantier || "—"]
+  ];
+  doc.setFontSize(11);
+  infos.forEach(function(row) {
+    ensureSpace(7);
+    doc.setFont("helvetica", "bold");
+    doc.text(row[0] + " :", marginL, y);
+    doc.setFont("helvetica", "normal");
+    doc.text(String(row[1]), marginL + 38, y);
+    y += 7;
+  });
+
+  if (d.adresse_livraison) {
+    ensureSpace(7);
+    doc.setFont("helvetica", "bold");
+    doc.text("Adresse de livraison :", marginL, y);
+    doc.setFont("helvetica", "normal");
+    doc.text(String(d.adresse_livraison), marginL + 45, y);
+    y += 7;
+  }
+
+  y += 4;
+  ensureSpace(10);
+  doc.setDrawColor(210);
+  doc.line(marginL, y, pageW - marginR, y);
+  y += 8;
+
+  var lignes = Array.isArray(d.lignes) ? d.lignes : [];
+  if (lignes.length) {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.text("Désignation", marginL, y);
+    doc.text("Quantité", pageW - marginR - 25, y);
+    y += 6;
+    doc.setDrawColor(230);
+    doc.line(marginL, y - 3, pageW - marginR, y - 3);
+    doc.setFont("helvetica", "normal");
+    lignes.forEach(function(l) {
+      var desigLines = doc.splitTextToSize(l.designation || "", pageW - marginL - marginR - 35);
+      ensureSpace(desigLines.length * 5.5 + 2);
+      doc.text(desigLines, marginL, y);
+      if (l.quantite) doc.text(String(l.quantite), pageW - marginR - 25, y);
+      y += desigLines.length * 5.5 + 2;
+    });
+  } else if (d.message) {
+    doc.setFont("helvetica", "normal");
+    var msgLines = doc.splitTextToSize(d.message, pageW - marginL - marginR);
+    ensureSpace(msgLines.length * 5.5);
+    doc.text(msgLines, marginL, y);
+    y += msgLines.length * 5.5;
+  }
+
+  if (lignes.length && d.message) {
+    y += 4;
+    ensureSpace(10);
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(10);
+    doc.text("Remarque :", marginL, y);
+    y += 5.5;
+    var remLines = doc.splitTextToSize(d.message, pageW - marginL - marginR);
+    ensureSpace(remLines.length * 5.5);
+    doc.text(remLines, marginL, y);
+    y += remLines.length * 5.5;
+  }
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(150);
+  doc.text("Document généré via NégoceID — " + new Date().toLocaleDateString("fr-FR"), marginL, pageH - 10);
+
+  return doc;
+}
+
+function bonDeCommandeFilename(d) {
+  var date = d.created_at ? new Date(d.created_at).toISOString().slice(0,10) : "date-inconnue";
+  return "bon-commande_" + (d.code_salarie || "salarie") + "_" + date + ".pdf";
+}
+
+function imprimerBonDeCommande(id) {
+  var d = demandesNegoCache.find(function(x){ return x.id === id; });
+  if (!d) return;
+  var doc = buildBonDeCommandeDoc(d);
+  if (!doc) return;
+  doc.autoPrint();
+  window.open(doc.output("bloburl"), "_blank");
+}
+
+function telechargerBonDeCommande(id) {
+  var d = demandesNegoCache.find(function(x){ return x.id === id; });
+  if (!d) return;
+  var doc = buildBonDeCommandeDoc(d);
+  if (!doc) return;
+  doc.save(bonDeCommandeFilename(d));
 }
 
 async function repondreDemandeNego(id) {
