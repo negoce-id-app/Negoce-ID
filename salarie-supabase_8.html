@@ -2865,30 +2865,65 @@ function isTousChantiersValue(c) {
   return v.indexOf("tous") === 0 || v.indexOf("toutes") === 0;
 }
 
-// Construit le champ "Chantier concerné". Deux cas :
-// - salarié autorisé sur des chantiers précis : liste déroulante limitée à
-//   ces chantiers.
-// - salarié autorisé sur "Tous chantiers" : pas de liste fixe à proposer,
-//   donc un champ de saisie libre (mais toujours obligatoire, voir sendDemande).
-function populateDemandeChantiers() {
-  var wrap = document.getElementById("dmdChantierWrap");
+// Construit le champ "Chantier concerné", utilisé pour "Bon de
+// commande" ET "Mes heures" (voir renderChantierSelectField). Trois cas :
+// - salarié autorisé sur des chantiers précis : liste déroulante limitée
+//   à ces chantiers.
+// - salarié autorisé sur "Tous chantiers" : liste déroulante basée sur le
+//   registre de l'entreprise (voir negoceid-122), avec une option "Autre"
+//   qui bascule sur une saisie libre — jamais bloquant si le chantier
+//   n'est pas encore enregistré.
+// - aucun registre renseigné pour l'entreprise : saisie libre directe.
+async function renderChantierSelectField(wrapId, inputId, ch) {
+  var wrap = document.getElementById(wrapId);
   if (!wrap) return;
-  var ch = (currentUser && Array.isArray(currentUser.chantiers)) ? currentUser.chantiers : [];
   var isUnrestricted = ch.some(isTousChantiersValue);
 
-  if (isUnrestricted) {
-    wrap.innerHTML = '<input class="dmd-in" id="dmdChantier" type="text" placeholder="Nom du chantier" autocomplete="off" autocorrect="off" spellcheck="false">';
+  if (!isUnrestricted) {
+    if (ch.length === 0) {
+      wrap.innerHTML = '<select class="dmd-in" id="'+inputId+'" disabled><option value="">Aucun chantier autorisé</option></select>';
+      return;
+    }
+    var options = '<option value="">— Choisir le chantier —</option>' + ch.map(function(c){
+      var e = String(c).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;");
+      return '<option value="'+e+'">'+e+'</option>';
+    }).join("");
+    wrap.innerHTML = '<select class="dmd-in" id="'+inputId+'">'+options+'</select>';
     return;
   }
-  if (ch.length === 0) {
-    wrap.innerHTML = '<select class="dmd-in" id="dmdChantier" disabled><option value="">Aucun chantier autorisé</option></select>';
+
+  wrap.innerHTML = '<select class="dmd-in" id="'+inputId+'" disabled><option value="">⏳ Chargement...</option></select>';
+  var connus = [];
+  try {
+    var { data, error } = await supabase.rpc('list_chantiers_entreprise', { p_code: currentCode });
+    if (error) throw error;
+    connus = Array.isArray(data) ? data.map(function(r){ return r.chantier; }).filter(Boolean) : [];
+  } catch(e) {
+    console.error("list_chantiers_entreprise error", e);
+  }
+
+  if (connus.length === 0) {
+    wrap.innerHTML = '<input class="dmd-in" id="'+inputId+'" type="text" placeholder="Nom du chantier" autocomplete="off" autocorrect="off" spellcheck="false">';
     return;
   }
-  var options = '<option value="">— Choisir le chantier —</option>' + ch.map(function(c){
-    var esc = String(c).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;");
-    return '<option value="'+esc+'">'+esc+'</option>';
-  }).join("");
-  wrap.innerHTML = '<select class="dmd-in" id="dmdChantier">'+options+'</select>';
+  var opts = '<option value="">— Choisir le chantier —</option>' + connus.map(function(c){
+    var e = String(c).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;");
+    return '<option value="'+e+'">'+e+'</option>';
+  }).join("") + '<option value="__autre__">✏️ Autre (chantier non listé)</option>';
+  wrap.innerHTML = '<select class="dmd-in" id="'+inputId+'" onchange="handleChantierSelectChange(this,\''+wrapId+'\',\''+inputId+'\')">'+opts+'</select>';
+}
+
+function handleChantierSelectChange(sel, wrapId, inputId) {
+  if (sel.value !== "__autre__") return;
+  var wrap = document.getElementById(wrapId);
+  var reloadFn = wrapId === "dmdChantierWrap" ? "populateDemandeChantiers()" : "populateHeuresChantiers()";
+  wrap.innerHTML = '<input class="dmd-in" id="'+inputId+'" type="text" placeholder="Nom du chantier" autocomplete="off" autocorrect="off" spellcheck="false">'+
+    '<span style="font-size:11px;color:var(--orange-dark);font-weight:700;cursor:pointer;display:inline-block;margin-top:6px" onclick="'+reloadFn+'">← Revenir à la liste</span>';
+}
+
+function populateDemandeChantiers() {
+  var ch = (currentUser && Array.isArray(currentUser.chantiers)) ? currentUser.chantiers : [];
+  renderChantierSelectField("dmdChantierWrap", "dmdChantier", ch);
 }
 
 async function populateDemandeAgences() {
@@ -3015,26 +3050,10 @@ async function openHeuresTab() {
   await loadMesHeures();
 }
 
-// Même logique que populateDemandeChantiers (liste déroulante limitée aux
-// chantiers autorisés du salarié, ou saisie libre si "Tous chantiers").
+// Même logique que populateDemandeChantiers — voir renderChantierSelectField.
 function populateHeuresChantiers() {
-  var wrap = document.getElementById("hrsChantierWrap");
-  if (!wrap) return;
   var ch = (currentUser && Array.isArray(currentUser.chantiers)) ? currentUser.chantiers : [];
-  var isUnrestricted = ch.some(isTousChantiersValue);
-  if (isUnrestricted) {
-    wrap.innerHTML = '<input class="dmd-in" id="hrsChantier" type="text" placeholder="Nom du chantier" autocomplete="off" autocorrect="off" spellcheck="false">';
-    return;
-  }
-  if (ch.length === 0) {
-    wrap.innerHTML = '<select class="dmd-in" id="hrsChantier" disabled><option value="">Aucun chantier autorisé</option></select>';
-    return;
-  }
-  var options = '<option value="">— Choisir le chantier —</option>' + ch.map(function(c){
-    var e = String(c).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;");
-    return '<option value="'+e+'">'+e+'</option>';
-  }).join("");
-  wrap.innerHTML = '<select class="dmd-in" id="hrsChantier">'+options+'</select>';
+  renderChantierSelectField("hrsChantierWrap", "hrsChantier", ch);
 }
 
 async function sendHeureTravail() {

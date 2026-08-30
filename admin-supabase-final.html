@@ -2680,6 +2680,29 @@ tr:hover td{background:#FAFBFF}
       <div class="kpi"><div class="kpi-icon">🔢</div><div class="kpi-val" id="kpiNumeroSuivi">—</div><div class="kpi-lbl">Dernier N° de suivi</div></div>
     </div>
 
+    <!-- CHANTIERS -->
+    <div class="section">
+      <div class="section-hdr">
+        <div class="section-title">🏗️ Chantiers</div>
+        <div class="section-actions">
+          <button class="btn-action btn-outline" id="chantiersCollapseBtn" onclick="toggleSectionCollapse('chantiersCollapseBody','chantiersCollapseBtn')">▾ Réduire</button>
+        </div>
+      </div>
+      <div id="chantiersCollapseBody">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:14px">
+          Le registre des chantiers de l'entreprise — indépendant du champ "Chantiers autorisés" de chaque salarié (qui détermine toujours qui a accès à quoi). Sert notamment à proposer un menu déroulant fiable aux salariés en "Tous chantiers" dans leur app (Bon de commande, Mes heures).
+        </div>
+        <div class="filter-row">
+          <input class="filter-select" id="chantierAddInput" type="text" placeholder="Nom du nouveau chantier..." style="flex:1;min-width:220px" onkeydown="if(event.key==='Enter')addChantier()">
+          <button class="btn-action btn-gold" onclick="addChantier()">+ Ajouter</button>
+        </div>
+        <div class="table-scroll"><table>
+          <thead><tr><th>Chantier</th><th>Action</th></tr></thead>
+          <tbody id="chantiersBody"><tr><td colspan="2" style="text-align:center;color:var(--muted);padding:24px">⏳ Chargement...</td></tr></tbody>
+        </table></div>
+      </div>
+    </div>
+
     <!-- SALARIÉS -->
     <div class="section">
       <div class="section-hdr">
@@ -4230,6 +4253,62 @@ function selectCompany(company) {
   subscribeToPassages();
   loadFournisseurs();
   loadSousTraitants();
+  loadChantiers();
+}
+
+// ── REGISTRE DES CHANTIERS (indépendant du champ "Chantiers autorisés"
+// de chaque salarié — voir negoceid-122) ──
+async function loadChantiers() {
+  var body = document.getElementById("chantiersBody");
+  if (!body || !currentCompany) return;
+  body.innerHTML = '<tr><td colspan="2" style="text-align:center;color:var(--muted);padding:24px">⏳ Chargement...</td></tr>';
+  try {
+    var { data, error } = await supabase.from('chantiers').select('id, nom').eq('company_id', currentCompany.id).order('nom');
+    if (error) throw error;
+    var list = Array.isArray(data) ? data : [];
+    if (list.length === 0) {
+      body.innerHTML = '<tr><td colspan="2" style="text-align:center;color:var(--muted);padding:24px">Aucun chantier enregistré</td></tr>';
+      return;
+    }
+    body.innerHTML = list.map(function(c) {
+      return '<tr>'+
+        '<td style="font-weight:600;color:var(--navy)">🏗️ '+esc(c.nom)+'</td>'+
+        '<td><button class="btn-tbl danger" onclick="deleteChantier('+c.id+')">🗑️</button></td>'+
+      '</tr>';
+    }).join("");
+  } catch(e) {
+    console.error("loadChantiers error", e);
+    body.innerHTML = '<tr><td colspan="2" style="text-align:center;color:var(--muted);padding:24px">⚠️ Erreur de chargement</td></tr>';
+  }
+}
+
+async function addChantier() {
+  if (!currentCompany) return;
+  var input = document.getElementById("chantierAddInput");
+  var nom = input ? input.value.trim() : "";
+  if (!nom) return;
+  try {
+    var { error } = await supabase.from('chantiers').insert({ company_id: currentCompany.id, nom: nom });
+    if (error) throw error;
+    if (input) input.value = "";
+    await loadChantiers();
+  } catch(e) {
+    console.error("addChantier error", e);
+    var msg = (e && e.message && e.message.indexOf("duplicate") !== -1) ? "Ce chantier existe déjà" : "Échec de l'ajout";
+    alert("❌ " + msg);
+  }
+}
+
+async function deleteChantier(id) {
+  if (!confirm("Supprimer ce chantier du registre ? (n'affecte pas les autorisations déjà en place sur les salariés)")) return;
+  try {
+    var { error } = await supabase.from('chantiers').delete().eq('id', id);
+    if (error) throw error;
+    await loadChantiers();
+  } catch(e) {
+    console.error("deleteChantier error", e);
+    alert("❌ Échec de la suppression");
+  }
 }
 
 // ── LOGO DE L'ENTREPRISE (affiché sur les bons de commande PDF côté
@@ -5031,6 +5110,7 @@ async function deleteHeure(id) {
 // section) pour rester replié d'une session à l'autre si l'admin le
 // préfère ainsi.
 var COLLAPSIBLE_SECTIONS = [
+  ["chantiersCollapseBody", "chantiersCollapseBtn"],
   ["salariesCollapseBody", "salariesCollapseBtn"],
   ["passagesCollapseBody", "passagesCollapseBtn"],
   ["heuresCollapseBody", "heuresCollapseBtn"],
