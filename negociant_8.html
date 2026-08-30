@@ -1163,12 +1163,14 @@ async function loadDemandesNego() {
           }).join("")+'</div>'
         : (d.message ? '<div class="dmn-msg">'+esc(d.message)+'</div>' : '');
       var remarqueNegoHtml = (lignesNego.length && d.message) ? '<div class="dmn-msg" style="font-style:italic;font-weight:600">💬 '+esc(d.message)+'</div>' : '';
+      var adresseNegoHtml = d.adresse_livraison ? '<div class="dmn-msg" style="font-weight:700">📍 '+esc(d.adresse_livraison)+'</div>' : '';
       return '<div class="dmn-item">'+
         '<div class="dmn-top">'+
           '<div class="dmn-salarie">'+esc(d.nom_salarie||d.code_salarie)+'</div>'+
           '<div class="dmn-statut '+(traitee?"traitee":"nouvelle")+'">'+(traitee?"Traitée":"Nouvelle")+'</div>'+
         '</div>'+
         lignesNegoHtml+
+        adresseNegoHtml+
         remarqueNegoHtml+
         '<div class="dmn-meta">'+date+(d.chantier?' · 🏗️ '+esc(d.chantier):'')+' · '+esc(d.code_salarie)+'</div>'+
         replyBlock+

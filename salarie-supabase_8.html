@@ -2518,7 +2518,7 @@ textarea.dmd-in{resize:none;min-height:80px}
 <div class="hidden" id="tabBar" style="padding:14px 0 0">
   <div class="tabs">
     <button class="tab active" onclick="switchTab('carte',this)">🪪 Ma carte</button>
-    <button class="tab" onclick="switchTab('bl',this)">📋 Mes BL</button>
+    <button class="tab" onclick="switchTab('bl',this)">📋 Mes passages</button>
     <button class="tab" onclick="switchTab('demande',this)">📋 Bon de commande</button>
     <button class="tab" onclick="switchTab('heures',this)">🕒 Mes heures</button>
   </div>
@@ -2565,11 +2565,11 @@ textarea.dmd-in{resize:none;min-height:80px}
   <button class="btn-out" onclick="out()">← Déconnexion</button>
 </div>
 
-<!-- MES BL -->
+<!-- MES PASSAGES -->
 <div class="screen hidden" id="sBL">
   <div class="bl-header-card">
     <div class="bl-header-name" id="blHeaderName">—</div>
-    <div class="bl-header-sub">Historique des bons de livraison</div>
+    <div class="bl-header-sub">Historique de mes passages</div>
   </div>
   <div class="bl-stats">
     <div class="bl-stat">
@@ -2595,6 +2595,10 @@ textarea.dmd-in{resize:none;min-height:80px}
 
 <!-- DEMANDE À UN NÉGOCIANT -->
 <div class="screen hidden" id="sDemande">
+  <div class="bl-header-card">
+    <div class="bl-header-name" id="dmdHeaderCompany" style="font-size:20px">—</div>
+    <div class="bl-header-sub">Bon de commande</div>
+  </div>
   <div class="dmd-card">
     <label class="dmd-lbl">Négociant</label>
     <select class="dmd-in" id="dmdAgence">
@@ -2609,6 +2613,8 @@ textarea.dmd-in{resize:none;min-height:80px}
     <label class="dmd-lbl">Lignes du bon de commande</label>
     <div class="dmd-lignes-list" id="dmdLignesList"></div>
     <button type="button" class="dmd-add-ligne" onclick="addDmdLigne()">+ Ajouter une ligne</button>
+    <label class="dmd-lbl">Adresse de livraison <span style="text-transform:none;font-weight:600">(optionnel)</span></label>
+    <input class="dmd-in" id="dmdAdresseLivraison" type="text" placeholder="Ex: 12 rue des Lilas, 33000 Bordeaux">
     <label class="dmd-lbl">Remarque <span style="text-transform:none;font-weight:600">(optionnel)</span></label>
     <textarea class="dmd-in" id="dmdMessage" placeholder="Ex: livraison avant 10h si possible"></textarea>
     <button class="btn" style="margin-top:14px" onclick="sendDemande()">Envoyer le bon de commande →</button>
@@ -2811,6 +2817,8 @@ var currentUser = null;
 async function openDemandeTab() {
   document.getElementById("dmdOk").style.display = "none";
   document.getElementById("dmdErr").style.display = "none";
+  var headerEl = document.getElementById("dmdHeaderCompany");
+  if (headerEl) headerEl.textContent = getCompanyDisplayName(currentCode, currentUser);
   dmdLignes = [{ designation: "", quantite: "" }];
   renderDmdLignes();
   populateDemandeChantiers();
@@ -2913,6 +2921,7 @@ async function sendDemande() {
   var agence = document.getElementById("dmdAgence").value;
   var chantierEl = document.getElementById("dmdChantier");
   var chantier = chantierEl ? chantierEl.value.trim() : "";
+  var adresseLivraison = document.getElementById("dmdAdresseLivraison").value.trim();
   var message = document.getElementById("dmdMessage").value.trim();
   var errEl = document.getElementById("dmdErr");
   var okEl = document.getElementById("dmdOk");
@@ -2933,10 +2942,12 @@ async function sendDemande() {
       p_chantier: chantier,
       p_agence_cible: agence,
       p_lignes: lignesValides,
+      p_adresse_livraison: adresseLivraison || null,
       p_message: message || null,
       p_pin: currentPin
     });
     if (error) throw error;
+    document.getElementById("dmdAdresseLivraison").value = "";
     document.getElementById("dmdMessage").value = "";
     dmdLignes = [{ designation: "", quantite: "" }];
     renderDmdLignes();
@@ -2976,12 +2987,14 @@ async function loadMesDemandes() {
           }).join("")+'</div>'
         : (d.message ? '<div class="dmd-item-msg">'+esc(d.message)+'</div>' : '');
       var remarqueHtml = (lignes.length && d.message) ? '<div class="dmd-item-msg" style="font-style:italic">💬 '+esc(d.message)+'</div>' : '';
+      var adresseHtml = d.adresse_livraison ? '<div class="dmd-item-msg">📍 '+esc(d.adresse_livraison)+'</div>' : '';
       return '<div class="dmd-item">'+
         '<div class="dmd-item-top">'+
           '<div class="dmd-item-agence">🏪 '+esc(d.agence_cible)+'</div>'+
           '<div class="dmd-item-statut '+(d.statut==="traitee"?"traitee":"nouvelle")+'">'+(d.statut==="traitee"?"Traitée":"Nouvelle")+'</div>'+
         '</div>'+
         lignesHtml+
+        adresseHtml+
         remarqueHtml+
         '<div class="dmd-item-meta">'+date+(d.chantier?' · 🏗️ '+esc(d.chantier):'')+'</div>'+
         reponseBlock+
@@ -3337,12 +3350,19 @@ function skipFaceId() {
   showCarte(pendingUser);
 }
 
+// Nom d'entreprise à afficher (carte + bon de commande) : priorité au vrai
+// nom transmis par get_salarie_by_code, sinon une table de correspondance
+// historique par préfixe, sinon le préfixe lui-même en dernier recours.
+function getCompanyDisplayName(code, user) {
+  var prefix = (code || "").split("-")[0];
+  var companyNames = {"MAG":"MAGENCIA","EXT":"Sous-traitant","ATL":"ATLAS","MAR":"BTP Martin SAS"};
+  return (user && user.entreprise) || companyNames[prefix] || prefix;
+}
+
 function showCarte(user) {
   currentUser = user;
   var code = currentCode;
-  var prefix = code.split("-")[0];
-  var companyNames = {"MAG":"MAGENCIA","EXT":"Sous-traitant","ATL":"ATLAS","MAR":"BTP Martin SAS"};
-  var companyName = user.entreprise || companyNames[prefix] || prefix;
+  var companyName = getCompanyDisplayName(code, user);
 
   document.getElementById("icBadge").textContent = user.type === "INTERNE" ? "INTERNE" : (user.type === "INTERIMAIRE" ? "INTÉRIMAIRE" : "SOUS-TRAITANT");
   document.getElementById("icCompany").textContent = "Entreprise : " + companyName;

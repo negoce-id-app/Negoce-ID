@@ -2702,7 +2702,7 @@ tr:hover td{background:#FAFBFF}
       <div class="section-hdr">
         <div class="section-title">🕒 Heures de travail — <span id="heuresTotalVal" style="color:var(--orange)">0 h</span></div>
         <div class="section-actions">
-          <button class="btn-action btn-outline" onclick="exportCSV('heures')">⬇️ Export CSV</button>
+          <button class="btn-action btn-outline" onclick="exportHeuresExcel()">⬇️ Export Excel</button>
         </div>
       </div>
       <div class="filter-row">
@@ -5577,7 +5577,7 @@ function showQRInModal(code) {
 
 // ── EXPORT ──
 function exportCSV(type) {
-  var data = type === "salaries" ? salaries : (type === "heures" ? getFilteredHeures() : getFilteredPassages());
+  var data = type === "salaries" ? salaries : getFilteredPassages();
   if (!data.length) { alert("Aucune donnée à exporter"); return; }
   // "photo" est désormais une URL Storage courte (voir uploadSalPhotoBlob) :
   // on peut l'inclure dans l'export. On exclut uniquement les éventuelles
@@ -5593,6 +5593,33 @@ function exportCSV(type) {
   a.href = URL.createObjectURL(blob);
   a.download = type+"_"+currentCompany.id+"_"+new Date().toISOString().slice(0,10)+".csv";
   a.click();
+}
+
+// Export en véritable fichier .xlsx (pas un .csv) — le CSV séparé par
+// point-virgule posait des soucis de lisibilité une fois ouvert dans
+// Excel (encodage/colonnes mal interprétées selon les réglages
+// régionaux). SheetJS est déjà chargé plus haut (voir <script> xlsx.full).
+function exportHeuresExcel() {
+  var data = getFilteredHeures();
+  if (!data.length) { alert("Aucune donnée à exporter"); return; }
+  var rows = data.map(function(h) {
+    var date = h.date_travail ? new Date(h.date_travail+"T00:00:00").toLocaleDateString("fr-FR") : "";
+    return {
+      "Date": date,
+      "Code salarié": h.code_salarie || "",
+      "Salarié": h.nom_salarie || h.code_salarie || "",
+      "Chantier": h.chantier || "",
+      "Début": (h.heure_debut||"").slice(0,5),
+      "Fin": (h.heure_fin||"").slice(0,5),
+      "Heures": Number(h.heures)||0,
+      "Note": h.note || ""
+    };
+  });
+  var ws = XLSX.utils.json_to_sheet(rows);
+  ws["!cols"] = [{wch:12},{wch:16},{wch:20},{wch:22},{wch:8},{wch:8},{wch:9},{wch:30}];
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Heures");
+  XLSX.writeFile(wb, "heures_"+currentCompany.id+"_"+new Date().toISOString().slice(0,10)+".xlsx");
 }
 
 function closeModal(id) { document.getElementById(id).classList.remove("open"); }
