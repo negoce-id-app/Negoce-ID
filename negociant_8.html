@@ -4151,12 +4151,12 @@ async function saveBL() {
   document.getElementById("blSaved").style.display = "flex";
   document.getElementById("savedCard").style.display = "flex";
 
-  // Trace par e-mail (best-effort, voir negoceid-126 + send-bl-email) :
-  // si l'entreprise du salarié a configuré une adresse de réception des
-  // BL, elle reçoit un mail récapitulatif de CE retrait. Ne bloque jamais
-  // la validation déjà confirmée ci-dessus, même en cas d'échec réseau ou
-  // si l'edge function n'est pas encore déployée.
-  notifyBlEmail(currentPassageId);
+  // Trace par e-mail désactivée (voir negoceid-126 + send-bl-email) :
+  // fonctionnalité conservée côté serveur (edge function déployée, colonne
+  // email_bl sur entreprises) mais plus déclenchée depuis l'app — retour à
+  // l'option "sans envoi de mail" à la demande d'Ahmed. Pour la
+  // réactiver : décommenter l'appel ci-dessous.
+  // notifyBlEmail(currentPassageId);
 }
 
 async function notifyBlEmail(passageId) {

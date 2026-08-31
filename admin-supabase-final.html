@@ -2671,7 +2671,12 @@ tr:hover td{background:#FAFBFF}
       </div>
     </div>
 
-    <!-- RÉCEPTION DES BL PAR E-MAIL -->
+    <!-- RÉCEPTION DES BL PAR E-MAIL : fonctionnalité désactivée (retour à
+         l'option sans envoi de mail, négociant_8.html n'appelle plus
+         notifyBlEmail). Carte masquée pour ne pas laisser un réglage qui
+         ne fait plus rien ; JS (saveEntrepriseEmailBl, selectCompany)
+         laissé en place, sans effet tant que ce bloc reste commenté. -->
+    <!--
     <div class="section" style="margin-bottom:20px">
       <div class="section-hdr">
         <div class="section-title">📧 Réception des BL par e-mail</div>
@@ -2685,6 +2690,7 @@ tr:hover td{background:#FAFBFF}
         <div id="entEmailBlErr" style="display:none;color:var(--red);font-size:12px;font-weight:600;width:100%"></div>
       </div>
     </div>
+    -->
 
     <!-- KPIs -->
     <div class="kpi-grid">
