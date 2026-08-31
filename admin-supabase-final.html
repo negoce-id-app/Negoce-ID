@@ -3239,6 +3239,12 @@ var salPhotoData = null;
 // une fois (loadAgenceVilleMap ci-dessous) et réutilisée dans renderAll()
 // pour afficher la ville à la place du nom de groupe.
 var agenceVilleMap = {};
+// {agence -> nom_siege} — remplace agenceVilleMap comme sous-titre affiché
+// sous le nom d'agence dans l'historique des passages (voir negoceid-125) :
+// plus parlant que la ville pour repérer que plusieurs agences appartiennent
+// au même groupe/société. agenceVilleMap reste chargée et disponible, mais
+// n'est plus utilisée dans ce sous-titre.
+var agenceNomSiegeMap = {};
 
 // ── AUTH ──
 // storageKey distinct : voir le commentaire équivalent dans negociant_8.html
@@ -4909,10 +4915,13 @@ async function loadAgenceVilleMap() {
     var { data, error } = await supabase.rpc('list_negociant_villes');
     if (error) throw error;
     var map = {};
+    var mapSiege = {};
     (Array.isArray(data) ? data : []).forEach(function(row) {
       if (row.agence && row.ville) map[row.agence] = row.ville;
+      if (row.agence && row.nom_siege) mapSiege[row.agence] = row.nom_siege;
     });
     agenceVilleMap = map;
+    agenceNomSiegeMap = mapSiege;
   } catch(e) {
     console.error("loadAgenceVilleMap error", e);
   }
@@ -5265,14 +5274,14 @@ function renderAll() {
         ? '<a href="'+esc(p.lien_bl)+'" target="_blank" rel="noopener" style="font-size:11px;font-weight:700;color:var(--gold);text-decoration:underline">📎 Voir</a>'
         : '<span style="color:var(--muted);font-size:11px">—</span>';
       // Le nom d'agence (p.agence) reste TOUJOURS affiché en premier — c'est
-      // l'identifiant réel, celui qu'on veut voir d'un coup d'œil. La ville
-      // (via agenceVilleMap, voir plus haut) est ajoutée en second, en
-      // petit texte gris en dessous, uniquement pour aider à distinguer
-      // deux agences d'un même groupe qui partageraient le même nom — elle
-      // n'est plus jamais affichée SEULE à la place du nom.
-      var villeAgence = agenceVilleMap[p.agence] || null;
-      var agenceCell = (villeAgence && villeAgence !== p.agence)
-        ? esc(p.agence)+'<div style="font-size:10.5px;color:var(--muted)">'+esc(villeAgence)+'</div>'
+      // l'identifiant réel, celui qu'on veut voir d'un coup d'œil. Le nom du
+      // siège/société (via agenceNomSiegeMap, voir plus haut — negoceid-125)
+      // est ajouté en second, en petit texte gris en dessous, pour repérer
+      // que plusieurs agences appartiennent au même groupe (remplace la
+      // ville affichée ici auparavant).
+      var siegeAgence = agenceNomSiegeMap[p.agence] || null;
+      var agenceCell = (siegeAgence && siegeAgence !== p.agence)
+        ? esc(p.agence)+'<div style="font-size:10.5px;color:var(--muted)">'+esc(siegeAgence)+'</div>'
         : esc(p.agence);
       return '<tr>'+
         '<td style="font-size:12px">'+d+'</td>'+
