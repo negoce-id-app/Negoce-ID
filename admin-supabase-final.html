@@ -2916,15 +2916,15 @@ tr:hover td{background:#FAFBFF}
       </div>
     </div>
     <div class="form-group">
-      <label class="form-lbl">Nom</label>
+      <label class="form-lbl">Nom <span style="color:var(--red)">*</span></label>
       <input class="form-in" id="salNom" type="text" placeholder="DUPONT" oninput="autoFillSalarieCode()">
     </div>
     <div class="form-group">
-      <label class="form-lbl">Prénom</label>
+      <label class="form-lbl">Prénom <span style="color:var(--red)">*</span></label>
       <input class="form-in" id="salPrenom" type="text" placeholder="Vincent" oninput="autoFillSalarieCode()">
     </div>
     <div class="form-group">
-      <label class="form-lbl">Date de naissance <span style="text-transform:none;font-weight:500;color:var(--muted)">(sert uniquement à générer un code unique)</span></label>
+      <label class="form-lbl">Date de naissance <span style="color:var(--red)">*</span> <span style="text-transform:none;font-weight:500;color:var(--muted)">(sert aussi à générer un code unique)</span></label>
       <input class="form-in" id="salDateNaissance" type="date" oninput="autoFillSalarieCode()">
     </div>
     <div class="form-group">
@@ -2940,7 +2940,7 @@ tr:hover td{background:#FAFBFF}
       <input class="form-in" id="salEmail" type="email" placeholder="prenom.nom@exemple.fr" autocomplete="off">
     </div>
     <div class="form-group">
-      <label class="form-lbl">Téléphone <span style="text-transform:none;font-weight:500;color:var(--muted)">(optionnel — permet de se connecter avec le téléphone)</span></label>
+      <label class="form-lbl">Téléphone <span style="color:var(--red)">*</span> <span style="text-transform:none;font-weight:500;color:var(--muted)">(permet aussi de se connecter avec le téléphone)</span></label>
       <input class="form-in" id="salTelephone" type="tel" placeholder="06 12 34 56 78" autocomplete="off">
     </div>
     <div class="form-group">
@@ -2959,7 +2959,7 @@ tr:hover td{background:#FAFBFF}
       </select>
     </div>
     <div class="form-group">
-      <label class="form-lbl">Chantiers autorisés (séparés par virgule)</label>
+      <label class="form-lbl">Chantiers autorisés <span style="color:var(--red)">*</span> <span style="text-transform:none;font-weight:500;color:var(--muted)">(séparés par virgule — écrivez "Tous" pour un accès sans restriction)</span></label>
       <input class="form-in" id="salChantiers" type="text" placeholder="Nom du chantier 1, Nom du chantier 2">
     </div>
     <div class="qr-preview" id="qrPreview" style="display:none">
@@ -5761,6 +5761,20 @@ async function saveSalarie() {
   var statut = document.getElementById("salStatut").value;
   var chantiers = document.getElementById("salChantiers").value.split(",").map(function(c){return c.trim();}).filter(Boolean);
   if (!code || !nom) { alert("Code et nom obligatoires"); return; }
+  // Nom, prénom, date de naissance, téléphone et chantiers sont désormais
+  // obligatoires à la saisie (le code et le poste restent les deux seuls
+  // à part "code"/"nom" qui ne le sont pas) — voir demande explicite : le
+  // salarié doit toujours être identifiable et joignable, et son accès
+  // chantier toujours défini (même "Tous", jamais laissé vide par oubli).
+  var champsManquants = [];
+  if (!prenom) champsManquants.push("Prénom");
+  if (!dateNaissance) champsManquants.push("Date de naissance");
+  if (!telephone) champsManquants.push("Téléphone");
+  if (chantiers.length === 0) champsManquants.push("Chantiers autorisés");
+  if (champsManquants.length > 0) {
+    alert("❌ Champs obligatoires manquants :\n— " + champsManquants.join("\n— "));
+    return;
+  }
   // Le code est réutilisé tel quel dans plusieurs endroits de l'interface
   // (boutons d'action, fenêtre QR) : on interdit les caractères qui n'ont
   // rien à faire dans un identifiant technique, pour ne jamais avoir à
