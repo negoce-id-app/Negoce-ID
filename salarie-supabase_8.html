@@ -2465,7 +2465,10 @@ textarea.dmd-in{resize:none;min-height:80px}
 <div class="safe-top"></div>
 <div class="hdr">
   <div><div class="logo">Négoce<em>ID</em></div><div class="logo-sub">Ma carte</div></div>
-  <div class="hdr-tag">Salarié</div>
+  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+    <div class="hdr-tag">Salarié</div>
+    <div id="hdrLogoutLink" class="hidden" style="font-size:10px;color:rgba(255,255,255,0.55);text-decoration:underline;cursor:pointer" onclick="out()">🚪 Déconnexion</div>
+  </div>
 </div>
 
 <!-- LOGIN -->
@@ -3411,6 +3414,7 @@ function showCarte(user) {
   document.getElementById("tabBar").classList.remove("hidden");
   document.getElementById("sCarte").classList.remove("hidden");
   document.getElementById("sBL").classList.add("hidden");
+  document.getElementById("hdrLogoutLink").classList.remove("hidden");
 
   subscribeConfirmChannel(code);
   startTotpCountdown();
@@ -3445,13 +3449,16 @@ function showConfirmCodeBanner(code) {
   if (!el) {
     el = document.createElement("div");
     el.id = "confirmBanner";
-    el.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:9999;background:#FF6A1A;color:#fff;text-align:center;padding:14px;font-weight:700;font-size:18px;box-shadow:0 2px 8px rgba(0,0,0,.2)";
+    el.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:9999;background:#FF6A1A;color:#fff;text-align:center;padding:14px;font-weight:700;font-size:18px;box-shadow:0 2px 8px rgba(0,0,0,.2);cursor:pointer";
+    // Reste affiché tant que le salarié ne le ferme pas lui-même (comme
+    // côté négociant, où le code reste visible sur la fiche tant qu'il
+    // n'enchaîne pas sur un autre scan) — pas de disparition automatique.
+    el.title = "Toucher pour fermer";
+    el.onclick = function(){ el.style.display = "none"; };
     document.body.appendChild(el);
   }
   el.textContent = "🔑 Code de confirmation : " + esc(String(code));
   el.style.display = "block";
-  clearTimeout(el._hideTimer);
-  el._hideTimer = setTimeout(function(){ el.style.display = "none"; }, 8000);
 }
 
 function out() {
@@ -3461,6 +3468,9 @@ function out() {
   currentUser = null;
   unsubscribeConfirmChannel();
   stopTotpCountdown();
+  var confirmEl = document.getElementById("confirmBanner");
+  if (confirmEl) confirmEl.style.display = "none";
+  document.getElementById("hdrLogoutLink").classList.add("hidden");
   document.getElementById("codeIn").value = "";
   document.getElementById("loginPwd").value = "";
   document.getElementById("loginFaceIdHint").classList.add("hidden");
