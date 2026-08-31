@@ -2707,19 +2707,6 @@ body{font-family:'Inter',sans-serif;background:var(--bg);display:flex;flex-direc
       <div class="err" id="chantierErr" style="display:none;margin-top:8px;max-width:none">❌ Sélectionnez un chantier autorisé avant de valider le retrait</div>
       <div style="margin-top:14px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-          <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.8px">🔢 N° de votre bon de livraison</div>
-          <div class="bl-optional" style="background:rgba(229,57,53,0.28);color:#FFB4B0">Obligatoire</div>
-        </div>
-        <!-- Obligatoire : saisi à la main pour relier ce passage à SON propre
-             numéro de BL (compta/logiciel de caisse). Ne pas confondre avec
-             le "N° de suivi" affiché automatiquement une fois le retrait
-             validé plus bas (numero_suivi, généré par NégoceID, sans
-             aucune saisie) — voir negoceid-107. -->
-        <input class="bl-input" id="bonLivraisonInput" type="text" placeholder="ex : votre numéro de BL" autocomplete="off" autocorrect="off" spellcheck="false" onfocus="cancelAutoReset()" oninput="document.getElementById('bonLivraisonErr').style.display='none'">
-        <div class="err" id="bonLivraisonErr" style="display:none;margin-top:8px;max-width:none">❌ Renseignez le numéro de votre bon de livraison avant de valider le retrait</div>
-      </div>
-      <div style="margin-top:14px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
           <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.8px">📎 Document du bon de livraison</div>
           <div class="bl-optional" style="background:rgba(212,168,67,0.28);color:#F5D98A">Fortement recommandé</div>
         </div>
@@ -4062,21 +4049,18 @@ async function renderChantierField(chantiers, externes, code) {
 async function saveBL() {
   var lienBlEl = document.getElementById("lienBlInput");
   var lienBl = lienBlEl ? lienBlEl.value.trim() : "";
-  var bonLivraisonEl = document.getElementById("bonLivraisonInput");
-  var bonLivraison = bonLivraisonEl ? bonLivraisonEl.value.trim() : "";
+  // Champ "N° de votre bon de livraison" retiré du formulaire : on ne
+  // collecte plus cette saisie manuelle (bon_livraison reste null pour
+  // les nouveaux passages ; la colonne et l'affichage dans l'Historique
+  // restent en place pour les anciens passages qui en ont un).
+  var bonLivraison = null;
   var chantier = document.getElementById("chantierInput").value.trim();
   var errEl = document.getElementById("chantierErr");
-  var bonLivraisonErrEl = document.getElementById("bonLivraisonErr");
   errEl.style.display = "none";
-  if (bonLivraisonErrEl) bonLivraisonErrEl.style.display = "none";
 
   if (!chantier) {
     errEl.textContent = "❌ Sélectionnez un chantier autorisé avant de valider le retrait";
     errEl.style.display = "block";
-    return;
-  }
-  if (!bonLivraison) {
-    if (bonLivraisonErrEl) bonLivraisonErrEl.style.display = "block";
     return;
   }
   if (!currentPassageId) {
