@@ -4150,6 +4150,27 @@ async function saveBL() {
   document.getElementById("blSavedTxt").textContent = msg + " ✓";
   document.getElementById("blSaved").style.display = "flex";
   document.getElementById("savedCard").style.display = "flex";
+
+  // Trace par e-mail (best-effort, voir negoceid-126 + send-bl-email) :
+  // si l'entreprise du salarié a configuré une adresse de réception des
+  // BL, elle reçoit un mail récapitulatif de CE retrait. Ne bloque jamais
+  // la validation déjà confirmée ci-dessus, même en cas d'échec réseau ou
+  // si l'edge function n'est pas encore déployée.
+  notifyBlEmail(currentPassageId);
+}
+
+async function notifyBlEmail(passageId) {
+  try {
+    var { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+    await fetch(SUPABASE_URL + "/functions/v1/send-bl-email", {
+      method: "POST",
+      headers: { "Authorization": "Bearer " + session.access_token, "Content-Type": "application/json" },
+      body: JSON.stringify({ passage_id: passageId })
+    });
+  } catch (e) {
+    console.error("notifyBlEmail error", e);
+  }
 }
 
 // (L'ancienne saisie manuelle "verifyManual" a été retirée à une époque ;

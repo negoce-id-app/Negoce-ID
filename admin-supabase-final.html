@@ -2671,6 +2671,21 @@ tr:hover td{background:#FAFBFF}
       </div>
     </div>
 
+    <!-- RÉCEPTION DES BL PAR E-MAIL -->
+    <div class="section" style="margin-bottom:20px">
+      <div class="section-hdr">
+        <div class="section-title">📧 Réception des BL par e-mail</div>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px">
+        Cette adresse reçoit automatiquement un e-mail récapitulatif à chaque bon de livraison validé par n'importe lequel de vos négociants (N° de suivi, salarié, chantier, document joint). Optionnel.
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <input class="form-in" id="entEmailBl" type="email" placeholder="bl@votre-entreprise.fr" style="max-width:320px" autocomplete="off">
+        <button class="btn-action btn-outline" onclick="saveEntrepriseEmailBl()">💾 Enregistrer</button>
+        <div id="entEmailBlErr" style="display:none;color:var(--red);font-size:12px;font-weight:600;width:100%"></div>
+      </div>
+    </div>
+
     <!-- KPIs -->
     <div class="kpi-grid">
       <div class="kpi"><div class="kpi-icon">👤</div><div class="kpi-val" id="kpiSal">—</div><div class="kpi-lbl">Salariés actifs</div></div>
@@ -4319,6 +4334,10 @@ function selectCompany(company) {
   showEntLogoPreview(company.logo_url || null);
   var tailleSel = document.getElementById("entLogoTaille");
   if (tailleSel) tailleSel.value = company.logo_taille || "moyen";
+  var emailBlEl = document.getElementById("entEmailBl");
+  if (emailBlEl) emailBlEl.value = company.email_bl || "";
+  var emailBlErrEl = document.getElementById("entEmailBlErr");
+  if (emailBlErrEl) emailBlErrEl.style.display = "none";
   loadData();
   subscribeToPassages();
   loadFournisseurs();
@@ -4431,6 +4450,28 @@ async function saveEntrepriseLogoTaille() {
   } catch(e) {
     console.error("saveEntrepriseLogoTaille error", e);
     alert("❌ Échec de l'enregistrement de la taille du logo");
+  }
+}
+
+async function saveEntrepriseEmailBl() {
+  if (!currentCompany) return;
+  var input = document.getElementById("entEmailBl");
+  var errEl = document.getElementById("entEmailBlErr");
+  var val = input ? input.value.trim() : "";
+  errEl.style.display = "none";
+  try {
+    var { data: ok, error } = await supabase.rpc('set_entreprise_email_bl', { p_company_id: currentCompany.id, p_email: val || null });
+    if (error || !ok) throw (error || new Error("Échec de l'enregistrement"));
+    currentCompany.email_bl = val || null;
+    errEl.style.color = "var(--green)";
+    errEl.textContent = "✅ Adresse enregistrée";
+    errEl.style.display = "block";
+    setTimeout(function(){ errEl.style.display = "none"; errEl.style.color = "var(--red)"; }, 2500);
+  } catch(e) {
+    console.error("saveEntrepriseEmailBl error", e);
+    errEl.style.color = "var(--red)";
+    errEl.textContent = "❌ " + frError(e);
+    errEl.style.display = "block";
   }
 }
 
