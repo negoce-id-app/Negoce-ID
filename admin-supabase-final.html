@@ -3567,7 +3567,7 @@ async function setNegociantStatut(authUserId, statut, agence) {
 }
 
 async function deleteNegociant(authUserId, agence) {
-  if (!confirm("⚠️ Supprimer définitivement l'agence " + agence + " ?\n\nElle ne pourra plus se connecter à NégoceID. Cette action est irréversible.")) return;
+  if (!confirm("⚠️ Supprimer définitivement l'agence " + agence + " ?\n\nSon compte de connexion sera entièrement supprimé (son adresse e-mail redevient utilisable pour une nouvelle agence). Cette action est irréversible.")) return;
   try {
     var { data, error } = await supabase.rpc('delete_negociant', { p_auth_user_id: authUserId });
     if (error) { alert("❌ Échec de la suppression :\n" + frError(error)); return; }
