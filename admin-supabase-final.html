@@ -5264,15 +5264,15 @@ function renderAll() {
       var blDocCell = p.lien_bl
         ? '<a href="'+esc(p.lien_bl)+'" target="_blank" rel="noopener" style="font-size:11px;font-weight:700;color:var(--gold);text-decoration:underline">📎 Voir</a>'
         : '<span style="color:var(--muted);font-size:11px">—</span>';
-      // Plusieurs agences d'un même groupe partagent souvent le même nom
-      // (ex. "UNIKALO CHARENTE MERIGNAC" x2) — on affiche donc la ville
-      // (via agenceVilleMap, voir plus haut) plutôt que le nom de groupe,
-      // avec le nom complet en info-bulle pour garder le contexte. Si la
-      // ville n'est pas connue (agence pas encore renseignée / fonction
-      // pas déployée), on retombe simplement sur le nom d'agence.
+      // Le nom d'agence (p.agence) reste TOUJOURS affiché en premier — c'est
+      // l'identifiant réel, celui qu'on veut voir d'un coup d'œil. La ville
+      // (via agenceVilleMap, voir plus haut) est ajoutée en second, en
+      // petit texte gris en dessous, uniquement pour aider à distinguer
+      // deux agences d'un même groupe qui partageraient le même nom — elle
+      // n'est plus jamais affichée SEULE à la place du nom.
       var villeAgence = agenceVilleMap[p.agence] || null;
-      var agenceCell = villeAgence
-        ? '<span title="'+esc(p.agence)+'">'+esc(villeAgence)+'</span>'
+      var agenceCell = (villeAgence && villeAgence !== p.agence)
+        ? esc(p.agence)+'<div style="font-size:10.5px;color:var(--muted)">'+esc(villeAgence)+'</div>'
         : esc(p.agence);
       return '<tr>'+
         '<td style="font-size:12px">'+d+'</td>'+
