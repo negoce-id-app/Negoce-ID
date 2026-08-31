@@ -2859,7 +2859,7 @@ tr:hover td{background:#FAFBFF}
         <select class="filter-select" id="companyDeptFilter" style="max-width:220px" onchange="renderCompaniesSection()"></select>
       </div>
       <div class="table-scroll"><table>
-        <thead><tr><th>Entreprise</th><th>Email</th><th>Préfixe</th><th>SIRET</th><th>Département</th><th>Formule</th><th>Statut</th><th>Action</th></tr></thead>
+        <thead><tr><th>Entreprise</th><th>Agences négociant</th><th>Email</th><th>Préfixe</th><th>SIRET</th><th>Département</th><th>Formule</th><th>Statut</th><th>Action</th></tr></thead>
         <tbody id="pendingBody"></tbody>
       </table></div>
     </div>
@@ -3204,6 +3204,13 @@ var SUPABASE_KEY = "sb_publishable_Hb6ILSc7bzW_sC6ZD2X7Nw_QP5homkU";
 
 // Entreprises chargées depuis Supabase
 var COMPANIES = [];
+// Agences négociant "fournisseurs" de chaque entreprise (entreprise_fournisseurs),
+// regroupées par company_id — alimente la colonne "Agences négociant" du
+// tableau "Gestion des entreprises". Chargées une fois avec COMPANIES (voir
+// loadCompanies), pas par entreprise individuellement : le super admin peut
+// lire toutes les lignes d'un coup (RLS super_admin), plus rapide qu'une
+// requête par ligne du tableau.
+var FOURNISSEURS_BY_COMPANY = {};
 var NEGOCIANTS = [];
 
 // Liste officielle des 101 départements français (code|nom), utilisée pour
@@ -3790,7 +3797,7 @@ function renderCompaniesSection() {
       || (qSiret && (c.siret||"").replace(/\s+/g, "").indexOf(qSiret) !== -1);
   });
   if (filtered.length === 0) {
-    body.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px">Aucune entreprise trouvée</td></tr>';
+    body.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:24px">Aucune entreprise trouvée</td></tr>';
     return;
   }
   var PLAN_LABELS = { solo: "Indépendant", petite: "Petite entreprise", entreprise: "Entreprise", grande: "Grande entreprise" };
@@ -3844,8 +3851,18 @@ function renderCompaniesSection() {
     var sansStripeTag = essaiEnCours
       ? ' <span class="pill pill-purple" title="Essai gratuit en cours, sans carte bancaire">⏳ Essai jusqu\'au '+esc(new Date(c.essai_expire_le).toLocaleDateString("fr-FR"))+'</span>'
       : (statut === "actif" && !c.stripe_subscription_id ? ' <span class="pill pill-purple" title="Aucun paiement Stripe en cours">🎁 Offert</span>' : '');
+    // Agences négociant "fournisseurs" de cette entreprise (entreprise_fournisseurs,
+    // voir loadFournisseursByCompany) — celles "en compte" en gras/navy,
+    // les autres en gris, comme dans l'écran de détail "Fournisseurs".
+    var fournisseursList = FOURNISSEURS_BY_COMPANY[c.id] || [];
+    var agencesCell = fournisseursList.length === 0
+      ? '<span style="color:var(--muted);font-size:12px">—</span>'
+      : fournisseursList.map(function(f) {
+          return '<span style="'+(f.en_compte?'color:var(--navy);font-weight:700':'color:var(--muted)')+';font-size:12px">'+esc(f.agence)+'</span>';
+        }).join('<br>');
     return '<tr>'+
       '<td>'+esc(c.nom)+soustraitantTag+'</td>'+
+      '<td>'+agencesCell+'</td>'+
       '<td>'+esc(c.email_admin||"—")+'</td>'+
       '<td>'+esc(c.prefix||"—")+'</td>'+
       '<td>'+siretCell+'</td>'+
@@ -4122,6 +4139,7 @@ async function loadCompanies() {
     var { data, error } = await supabase.from('entreprises').select('*').order('nom');
     if (!error && Array.isArray(data)) {
       COMPANIES = data;
+      loadFournisseursByCompany(); // best-effort, ne bloque pas l'affichage des entreprises si ça échoue
       return true;
     }
     console.error("loadCompanies failed", error);
@@ -4132,6 +4150,26 @@ async function loadCompanies() {
   // d'échec explicite (voir l'appel dans login()).
   COMPANIES = [];
   return false;
+}
+
+// Charge en une seule requête toutes les lignes entreprise_fournisseurs
+// (RLS : le super admin les voit toutes, pas besoin de filtrer par
+// company_id) et les regroupe par company_id, pour la colonne "Agences
+// négociant" du tableau "Gestion des entreprises".
+async function loadFournisseursByCompany() {
+  try {
+    var { data, error } = await supabase.from('entreprise_fournisseurs').select('company_id, agence, en_compte').order('agence');
+    if (error) throw error;
+    var map = {};
+    (Array.isArray(data) ? data : []).forEach(function(f) {
+      if (!map[f.company_id]) map[f.company_id] = [];
+      map[f.company_id].push({ agence: f.agence, en_compte: f.en_compte });
+    });
+    FOURNISSEURS_BY_COMPANY = map;
+    renderCompaniesSection();
+  } catch(e) {
+    console.error("loadFournisseursByCompany error", e);
+  }
 }
 
 async function logout() {
