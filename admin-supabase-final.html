@@ -3535,11 +3535,20 @@ function renderNegociantsSection() {
       // ne se ressemblent pas), pour repérer une incohérence avant
       // d'activer. raison_sociale_siret est vide pour les négociants
       // inscrits avant cette mise à jour — rien d'anormal dans ce cas.
+      //
+      // Comparaison faite contre "nom_siege" (nom du groupe/société,
+      // confirmé par l'admin ou pré-rempli depuis ce même SIRET — voir
+      // negoceid-124) plutôt que contre le nom d'agence : celui-ci diffère
+      // volontairement du nom légal la plupart du temps (ex. l'enseigne
+      // "MPPI BEGLES" pour la société "M+ MATERIAUX") et déclenchait donc
+      // une avalanche de faux positifs. Si nom_siege n'est pas encore
+      // renseigné, on retombe sur le nom d'agence comme avant.
       var raisonSociale = n.raison_sociale_siret || null;
       var normalise = function(s){ return String(s||"").toUpperCase().replace(/[^A-Z0-9]/g, ""); };
+      var refName = n.nom_siege || n.agence;
       var possibleMismatch = raisonSociale
-        && normalise(raisonSociale).indexOf(normalise(n.agence).slice(0, 6)) === -1
-        && normalise(n.agence).indexOf(normalise(raisonSociale).slice(0, 6)) === -1;
+        && normalise(raisonSociale).indexOf(normalise(refName).slice(0, 6)) === -1
+        && normalise(refName).indexOf(normalise(raisonSociale).slice(0, 6)) === -1;
       var siretCell = n.siret
         ? '<div style="font-family:monospace;font-size:10.5px;color:var(--muted)">'+esc(n.siret)+'</div>'
           + (raisonSociale
