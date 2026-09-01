@@ -6074,9 +6074,21 @@ function exportCSV(type) {
 function exportHeuresExcel() {
   var data = getFilteredHeures();
   if (!data.length) { alert("Aucune donnée à exporter"); return; }
-  var rows = data.map(function(h) {
+
+  // Un onglet par salarié (au lieu d'une seule liste mélangeant tout le
+  // monde) : on groupe d'abord les lignes par code_salarie (clé stable),
+  // le nom sert juste à nommer l'onglet et à rester lisible si l'onglet
+  // est imprimé/partagé seul.
+  var groups = {};
+  var order = [];
+  data.forEach(function(h) {
+    var key = h.code_salarie || h.nom_salarie || "—";
+    if (!groups[key]) {
+      groups[key] = { nom: h.nom_salarie || h.code_salarie || "Salarié", rows: [] };
+      order.push(key);
+    }
     var date = h.date_travail ? new Date(h.date_travail+"T00:00:00").toLocaleDateString("fr-FR") : "";
-    return {
+    groups[key].rows.push({
       "Date": date,
       "Code salarié": h.code_salarie || "",
       "Salarié": h.nom_salarie || h.code_salarie || "",
@@ -6085,13 +6097,33 @@ function exportHeuresExcel() {
       "Fin": (h.heure_fin||"").slice(0,5),
       "Heures": Number(h.heures)||0,
       "Note": h.note || ""
-    };
+    });
   });
-  var ws = XLSX.utils.json_to_sheet(rows);
-  ws["!cols"] = [{wch:12},{wch:16},{wch:20},{wch:22},{wch:8},{wch:8},{wch:9},{wch:30}];
+
   var wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Heures");
+  var usedSheetNames = {};
+  order.forEach(function(key) {
+    var g = groups[key];
+    var ws = XLSX.utils.json_to_sheet(g.rows);
+    ws["!cols"] = [{wch:12},{wch:16},{wch:20},{wch:22},{wch:8},{wch:8},{wch:9},{wch:30}];
+    XLSX.utils.book_append_sheet(wb, ws, sanitizeSheetName(g.nom, usedSheetNames));
+  });
   XLSX.writeFile(wb, "heures_"+currentCompany.id+"_"+new Date().toISOString().slice(0,10)+".xlsx");
+}
+
+// Noms d'onglet Excel : 31 caractères max, certains caractères interdits
+// (\ / ? * [ ] :), et deux onglets ne peuvent pas porter le même nom —
+// on tronque et on désambiguïse si besoin (ex : deux salariés homonymes).
+function sanitizeSheetName(name, usedNames) {
+  var base = String(name || "Salarié").replace(/[\\/?*\[\]:]/g, " ").trim().slice(0, 31) || "Salarié";
+  var clean = base, i = 2;
+  while (usedNames[clean]) {
+    var suffix = " (" + i + ")";
+    clean = base.slice(0, 31 - suffix.length) + suffix;
+    i++;
+  }
+  usedNames[clean] = true;
+  return clean;
 }
 
 function closeModal(id) { document.getElementById(id).classList.remove("open"); }
