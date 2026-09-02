@@ -2671,6 +2671,21 @@ tr:hover td{background:#FAFBFF}
       </div>
     </div>
 
+    <!-- E-MAIL DE CONNEXION ADMIN -->
+    <div class="section" style="margin-bottom:20px">
+      <div class="section-hdr">
+        <div class="section-title">📧 Adresse e-mail de connexion (admin)</div>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px">
+        C'est l'adresse utilisée pour se connecter à cet espace administrateur. La modifier change immédiatement l'identifiant de connexion.
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <input class="form-in" id="entAdminEmail" type="email" placeholder="admin@votre-entreprise.fr" style="max-width:320px" autocomplete="off">
+        <button class="btn-action btn-outline" onclick="saveAdminEmail()">💾 Enregistrer</button>
+        <div id="entAdminEmailErr" style="display:none;color:var(--red);font-size:12px;font-weight:600;width:100%"></div>
+      </div>
+    </div>
+
     <!-- RÉCEPTION DES BL PAR E-MAIL : fonctionnalité désactivée (retour à
          l'option sans envoi de mail, négociant_8.html n'appelle plus
          notifyBlEmail). Carte masquée pour ne pas laisser un réglage qui
@@ -3878,6 +3893,7 @@ function renderCompaniesSection() {
     }).join("");
     var planSelect = '<select class="filter-select" style="font-size:12px;padding:6px 8px;min-width:120px" onchange="updateCompanyPlan(\''+escJsAttr(c.id)+'\', this.value)">'+planOptions+'</select>';
     var siretCell = esc(c.siret||"—")+' <button class="btn-tbl" onclick="editCompanySiret(\''+escJsAttr(c.id)+'\')" title="Modifier le SIRET">✏️</button>';
+    var adminEmailCell = esc(c.email_admin||"—")+' <button class="btn-tbl" onclick="editCompanyAdminEmail(\''+escJsAttr(c.id)+'\')" title="Modifier l\'adresse de connexion">✏️</button>';
     var soustraitantTag = c.est_sous_traitant ? ' <span class="pill pill-gold" title="Compte Indépendant auto-inscrit (sous-traitant)">🧰 Indépendant</span>' : '';
     // Distingue un essai gratuit en cours (14 jours à l'inscription, voir
     // migration 111 — a une date de fin) d'un accès offert manuellement
@@ -3899,7 +3915,7 @@ function renderCompaniesSection() {
     return '<tr>'+
       '<td>'+esc(c.nom)+soustraitantTag+'</td>'+
       '<td>'+agencesCell+'</td>'+
-      '<td>'+esc(c.email_admin||"—")+'</td>'+
+      '<td>'+adminEmailCell+'</td>'+
       '<td>'+esc(c.prefix||"—")+'</td>'+
       '<td>'+siretCell+'</td>'+
       '<td>'+deptSelect+'</td>'+
@@ -3947,6 +3963,43 @@ async function updateCompanySiret(companyId, siret) {
     renderCompaniesSection();
   } catch(e) {
     alert("❌ Échec de la mise à jour du SIRET :\n" + frError(e));
+  }
+}
+
+// Adresse de connexion admin, modifiable en un clic depuis "Gestion des
+// entreprises" (même logique crayon que le SIRET ci-dessus) — passe par
+// la même edge function update-admin-email que la carte self-service
+// (voir saveAdminEmail), seule capable de toucher auth.users.
+function editCompanyAdminEmail(companyId) {
+  var c = COMPANIES.find(function(x){ return x.id === companyId; });
+  if (!c) return;
+  var next = prompt("Nouvelle adresse de connexion admin pour \""+c.nom+"\" :", c.email_admin || "");
+  if (next === null) return; // annulé
+  updateCompanyAdminEmail(companyId, next);
+}
+
+async function updateCompanyAdminEmail(companyId, email) {
+  var c = COMPANIES.find(function(x){ return x.id === companyId; });
+  var val = String(email || "").trim().toLowerCase();
+  if (val === (c ? (c.email_admin || "") : "")) return; // rien n'a changé
+  if (!val || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) {
+    alert("❌ Adresse e-mail invalide.");
+    return;
+  }
+  try {
+    var { data: { session } } = await supabase.auth.getSession();
+    var res = await fetch(SUPABASE_URL + "/functions/v1/update-admin-email", {
+      method: "POST",
+      headers: { "Authorization": "Bearer " + session.access_token, "Content-Type": "application/json" },
+      body: JSON.stringify({ company_id: companyId, new_email: val })
+    });
+    var result = await res.json();
+    if (!res.ok) throw new Error(result.error || "Échec de la mise à jour");
+    if (c) c.email_admin = result.email || val;
+    if (currentCompany && currentCompany.id === companyId) currentCompany.email_admin = c ? c.email_admin : val;
+    renderCompaniesSection();
+  } catch(e) {
+    alert("❌ Échec de la mise à jour de l'adresse de connexion :\n" + frError(e));
   }
 }
 
@@ -4344,6 +4397,10 @@ function selectCompany(company) {
   if (emailBlEl) emailBlEl.value = company.email_bl || "";
   var emailBlErrEl = document.getElementById("entEmailBlErr");
   if (emailBlErrEl) emailBlErrEl.style.display = "none";
+  var adminEmailEl = document.getElementById("entAdminEmail");
+  if (adminEmailEl) adminEmailEl.value = company.email_admin || "";
+  var adminEmailErrEl = document.getElementById("entAdminEmailErr");
+  if (adminEmailErrEl) adminEmailErrEl.style.display = "none";
   loadData();
   subscribeToPassages();
   loadFournisseurs();
@@ -4475,6 +4532,45 @@ async function saveEntrepriseEmailBl() {
     setTimeout(function(){ errEl.style.display = "none"; errEl.style.color = "var(--red)"; }, 2500);
   } catch(e) {
     console.error("saveEntrepriseEmailBl error", e);
+    errEl.style.color = "var(--red)";
+    errEl.textContent = "❌ " + frError(e);
+    errEl.style.display = "block";
+  }
+}
+
+// Change l'adresse e-mail de CONNEXION du company_admin (pas juste le
+// champ d'affichage) — passe forcément par l'edge function
+// update-admin-email : c'est la seule à pouvoir toucher auth.users
+// (nécessite le service role, impossible depuis le client). Ouverte au
+// super admin (n'importe quelle entreprise) et au company_admin
+// lui-même (uniquement la sienne) — voir la vérification côté serveur.
+async function saveAdminEmail() {
+  if (!currentCompany) return;
+  var input = document.getElementById("entAdminEmail");
+  var errEl = document.getElementById("entAdminEmailErr");
+  var val = input ? input.value.trim() : "";
+  errEl.style.display = "none";
+  if (!val) { errEl.style.color = "var(--red)"; errEl.textContent = "❌ L'adresse e-mail ne peut pas être vide"; errEl.style.display = "block"; return; }
+  if (val === (currentCompany.email_admin || "")) return; // rien n'a changé
+  if (!confirm("Changer l'adresse de connexion de \""+(currentCompany.nom||"cette entreprise")+"\" pour :\n"+val+"\n\nCe sera désormais l'identifiant de connexion à cet espace admin. Continuer ?")) return;
+  try {
+    var { data: { session } } = await supabase.auth.getSession();
+    var res = await fetch(SUPABASE_URL + "/functions/v1/update-admin-email", {
+      method: "POST",
+      headers: { "Authorization": "Bearer " + session.access_token, "Content-Type": "application/json" },
+      body: JSON.stringify({ company_id: currentCompany.id, new_email: val })
+    });
+    var result = await res.json();
+    if (!res.ok) throw new Error(result.error || "Échec de la mise à jour");
+    currentCompany.email_admin = result.email || val;
+    var cRef = COMPANIES.find(function(x){ return x.id === currentCompany.id; });
+    if (cRef) cRef.email_admin = currentCompany.email_admin;
+    errEl.style.color = "var(--green)";
+    errEl.textContent = "✅ Adresse de connexion mise à jour";
+    errEl.style.display = "block";
+    setTimeout(function(){ errEl.style.display = "none"; errEl.style.color = "var(--red)"; }, 2500);
+  } catch(e) {
+    console.error("saveAdminEmail error", e);
     errEl.style.color = "var(--red)";
     errEl.textContent = "❌ " + frError(e);
     errEl.style.display = "block";
