@@ -3340,6 +3340,12 @@ async function enableFaceId() {
     if (lastIdentifiantRaw && lastIdentifiantRaw !== currentCode) {
       localStorage.setItem("webauthn_cred_" + lastIdentifiantRaw, rawId);
     }
+    // Mémorise CET identifiant comme "dernier utilisé sur cet appareil" pour
+    // pré-remplir automatiquement le champ à la prochaine ouverture — sans
+    // ça, Face ID/Touch ID évite de retaper le mot de passe mais oblige
+    // quand même à retaper l'identifiant à chaque fois pour faire apparaître
+    // le raccourci (voir initFaceIdShortcut, appelé au chargement).
+    localStorage.setItem("webauthn_last_identifiant", lastIdentifiantRaw || currentCode);
     // Le PIN doit aussi être stocké ici : "Mes BL" et "Demande" le revalident
     // désormais côté serveur à chaque appel (audit de sécurité), pas
     // seulement au login. Sans ça, une connexion Face ID ne pourrait plus
@@ -3476,12 +3482,31 @@ function out() {
   document.getElementById("loginFaceIdHint").classList.add("hidden");
   document.getElementById("sLogin").classList.remove("hidden");
   document.getElementById("sFaceIdOffer").classList.add("hidden");
+  // Redonne tout de suite le raccourci Face ID/Touch ID (identifiant
+  // pré-rempli) après une déconnexion, comme au premier chargement.
+  initFaceIdShortcut();
   document.getElementById("sForgotSalarie").classList.add("hidden");
   document.getElementById("tabBar").classList.add("hidden");
   document.getElementById("sCarte").classList.add("hidden");
   document.getElementById("sBL").classList.add("hidden");
   document.getElementById("sDemande").classList.add("hidden");
 }
+
+// Pré-remplit l'identifiant avec celui utilisé pour activer Face ID/Touch
+// ID la dernière fois sur CET appareil (webauthn_last_identifiant, posé
+// dans enableFaceId), pour ne plus jamais avoir à le retaper : le
+// raccourci "Utiliser Face ID / Touch ID" apparaît donc immédiatement,
+// aussi bien au premier chargement de la page qu'après une déconnexion.
+// Reste sans effet si Face ID n'a jamais été activé sur cet appareil
+// (rien en localStorage, comportement identique à avant).
+function initFaceIdShortcut() {
+  var lastId = localStorage.getItem("webauthn_last_identifiant");
+  if (lastId && localStorage.getItem("webauthn_cred_" + lastId)) {
+    document.getElementById("codeIn").value = lastId;
+    checkFaceIdAvailable();
+  }
+}
+initFaceIdShortcut();
 </script>
 </body>
 </html>
