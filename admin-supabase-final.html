@@ -2355,14 +2355,14 @@ function barcodeDataUrl(text) {
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
-:root{--navy:#10203D;--navy2:#182A4C;--orange:#FF6A1A;--orange-dark:#E4580D;--orange-soft:#FFE7D6;--bg:#F5F6F8;--white:#fff;--green:#0CAF60;--red:#E53935;--muted:#667085;--border:#E6E8EC;--shadow:0 2px 16px rgba(16,32,61,0.08)}
+:root{--navy:#10203D;--navy2:#182A4C;--orange:#E0692A;--orange-dark:#BC541E;--orange-soft:#F7DFCB;--bg:#F5F6F8;--white:#fff;--green:#0CAF60;--red:#E53935;--muted:#667085;--border:#E6E8EC;--shadow:0 2px 16px rgba(16,32,61,0.08)}
 body{font-family:'Inter',sans-serif;background:var(--bg);min-height:100vh}
 
 /* HEADER */
 .hdr{background:var(--navy);padding:14px 28px;display:flex;align-items:center;justify-content:space-between}
 .logo{font-size:18px;font-weight:900;color:#fff}.logo em{color:var(--orange);font-style:normal}
 .hdr-right{display:flex;align-items:center;gap:12px}
-.hdr-tag{background:rgba(255,106,26,0.15);border:1px solid rgba(255,106,26,0.35);color:var(--orange);font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px}
+.hdr-tag{background:rgba(224,105,42,0.15);border:1px solid rgba(224,105,42,0.35);color:var(--orange);font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px}
 .btn-logout-hdr{background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.7);border:none;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer}
 
 /* LOGIN ADMIN */
@@ -6133,7 +6133,7 @@ function printModalQr() {
   var hint = hintVisible ? (document.getElementById("modalQrHint").textContent || "") : "";
   var w = window.open("","_blank","width=380,height=560");
   if (!w) { alert("⚠️ La fenêtre d'impression a été bloquée par le navigateur — autorisez les pop-ups pour ce site et réessayez."); return; }
-  w.document.write('<html><body style="margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif;background:#F5F6F8;padding:20px;text-align:center"><img src="'+qrSrc+'" style="width:200px;border-radius:12px">'+(bcSrc ? '<img src="'+bcSrc+'" style="max-width:300px;margin-top:14px;background:#fff;padding:8px;border-radius:8px">' : '')+'<p style="margin-top:12px;font-size:14px;font-weight:700;color:#10203D">'+esc(label)+'</p>'+(hint ? '<p style="margin-top:2px;font-size:11px;color:#667085">'+esc(hint)+'</p>' : '')+'<button onclick="window.print()" style="margin-top:12px;padding:10px 20px;background:#FF6A1A;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:700">🖨️ Imprimer</button></body></html>');
+  w.document.write('<html><body style="margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif;background:#F5F6F8;padding:20px;text-align:center"><img src="'+qrSrc+'" style="width:200px;border-radius:12px">'+(bcSrc ? '<img src="'+bcSrc+'" style="max-width:300px;margin-top:14px;background:#fff;padding:8px;border-radius:8px">' : '')+'<p style="margin-top:12px;font-size:14px;font-weight:700;color:#10203D">'+esc(label)+'</p>'+(hint ? '<p style="margin-top:2px;font-size:11px;color:#667085">'+esc(hint)+'</p>' : '')+'<button onclick="window.print()" style="margin-top:12px;padding:10px 20px;background:#E0692A;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:700">🖨️ Imprimer</button></body></html>');
 }
 
 function showQRInModal(code) {

@@ -2346,7 +2346,7 @@ function barcodeDataUrl(text) {
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-:root{--navy:#10203D;--navy2:#182A4C;--orange:#FF6A1A;--orange-dark:#E4580D;--orange-soft:#FFE7D6;--bg:#F5F6F8;--white:#fff;--green:#0CAF60;--green-bg:#EDFBF3;--red:#E53935;--red-bg:#FFF0F0;--muted:#667085;--border:#E6E8EC;--shadow:0 2px 20px rgba(16,32,61,0.10)}
+:root{--navy:#10203D;--navy2:#182A4C;--orange:#E0692A;--orange-dark:#BC541E;--orange-soft:#F7DFCB;--bg:#F5F6F8;--white:#fff;--green:#0CAF60;--green-bg:#EDFBF3;--red:#E53935;--red-bg:#FFF0F0;--muted:#667085;--border:#E6E8EC;--shadow:0 2px 20px rgba(16,32,61,0.10)}
 html,body{height:100%;overflow:hidden}
 body{font-family:'Inter',sans-serif;background:var(--bg);display:flex;flex-direction:column;max-width:480px;margin:0 auto}
 .safe-top{height:env(safe-area-inset-top,44px);background:var(--navy)}
@@ -2392,7 +2392,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);display:flex;flex-direc
 #video{width:100%;height:100%;object-fit:cover;display:block}
 .cam-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
 .cam-frame{width:55%;height:75%;border:3px solid var(--orange);border-radius:14px;box-shadow:0 0 0 9999px rgba(0,0,0,0.5);animation:pulse 2s ease-in-out infinite}
-@keyframes pulse{0%,100%{border-color:var(--orange)}50%{border-color:rgba(255,106,26,0.35)}}
+@keyframes pulse{0%,100%{border-color:var(--orange)}50%{border-color:rgba(224,105,42,0.35)}}
 .scan-line{position:absolute;width:55%;height:2px;background:linear-gradient(90deg,transparent,var(--orange),transparent);animation:sl 2s ease-in-out infinite}
 @keyframes sl{0%{top:12%}100%{top:88%}}
 #canvas{display:none}
@@ -2432,7 +2432,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);display:flex;flex-direc
 .bl-card{background:linear-gradient(135deg,var(--navy),var(--navy2));border-radius:18px;padding:18px;box-shadow:var(--shadow)}
 .bl-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .bl-title{font-size:13px;font-weight:700;color:rgba(255,255,255,0.9);text-transform:uppercase;letter-spacing:0.8px}
-.bl-optional{background:rgba(255,106,26,0.22);color:var(--orange);font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px}
+.bl-optional{background:rgba(224,105,42,0.22);color:var(--orange);font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px}
 .bl-row{display:flex;gap:8px}
 .bl-input{flex:1;padding:13px;border:2px solid rgba(255,255,255,0.15);border-radius:12px;font-size:16px;font-weight:700;letter-spacing:2px;text-transform:uppercase;font-family:monospace;color:#fff;background:rgba(255,255,255,0.08);-webkit-appearance:none}
 .bl-input::placeholder{color:rgba(255,255,255,0.25);letter-spacing:0;font-weight:400}
@@ -2578,7 +2578,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);display:flex;flex-direc
 <div class="screen" id="sLogin">
   <div class="brand-mark">
     <svg viewBox="0 0 180 180" width="38" height="38">
-      <path d="M90 26 L138 42 V84 C138 116 118 140 90 154 C62 140 42 116 42 84 V42 Z" fill="#FF6A1A"/>
+      <path d="M90 26 L138 42 V84 C138 116 118 140 90 154 C62 140 42 116 42 84 V42 Z" fill="#E0692A"/>
       <path d="M68 88 L84 104 L114 68" fill="none" stroke="#FFFFFF" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/>
     </svg>
   </div>
@@ -2677,7 +2677,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);display:flex;flex-direc
       <div class="v-icon" id="vIcon">✅</div>
       <div class="v-text" id="vText">AUTORISÉ</div>
       <div class="v-sub" id="vSub"></div>
-      <div id="vConfirm" style="display:none;margin-top:8px;padding:8px 14px;background:rgba(255,106,26,0.15);color:#FF6A1A;border-radius:8px;font-weight:700;font-size:14px;text-align:center"></div>
+      <div id="vConfirm" style="display:none;margin-top:8px;padding:8px 14px;background:rgba(224,105,42,0.15);color:#E0692A;border-radius:8px;font-weight:700;font-size:14px;text-align:center"></div>
     </div>
     <div class="detail">
       <div class="d-lbl">Identité</div>
@@ -3519,7 +3519,7 @@ function printMonQr() {
   var label = document.getElementById("monQrAgenceText").textContent || "";
   var w = window.open("", "_blank", "width=380,height=560");
   if (!w) { alert("⚠️ La fenêtre d'impression a été bloquée par le navigateur — autorisez les pop-ups pour ce site et réessayez."); return; }
-  w.document.write('<html><body style="margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif;background:#F5F6F8;padding:20px;text-align:center"><img src="'+qrSrc+'" style="width:200px;border-radius:12px">'+(bcSrc ? '<img src="'+bcSrc+'" style="max-width:300px;margin-top:14px;background:#fff;padding:8px;border-radius:8px">' : '')+'<p style="margin-top:12px;font-size:14px;font-weight:700;color:#10203D">'+esc(label)+'</p><button onclick="window.print()" style="margin-top:12px;padding:10px 20px;background:#FF6A1A;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:700">🖨️ Imprimer</button></body></html>');
+  w.document.write('<html><body style="margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif;background:#F5F6F8;padding:20px;text-align:center"><img src="'+qrSrc+'" style="width:200px;border-radius:12px">'+(bcSrc ? '<img src="'+bcSrc+'" style="max-width:300px;margin-top:14px;background:#fff;padding:8px;border-radius:8px">' : '')+'<p style="margin-top:12px;font-size:14px;font-weight:700;color:#10203D">'+esc(label)+'</p><button onclick="window.print()" style="margin-top:12px;padding:10px 20px;background:#E0692A;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:700">🖨️ Imprimer</button></body></html>');
 }
 
 // Cache de la dernière liste chargée — sert à retrouver une demande par id
