@@ -3050,6 +3050,12 @@ async function openHeuresTab() {
   document.getElementById("hrsErr").style.display = "none";
   var dateEl = document.getElementById("hrsDate");
   if (dateEl && !dateEl.value) dateEl.value = new Date().toISOString().slice(0, 10);
+  // Horaires par défaut proposés (modifiables) pour éviter la ressaisie
+  // manuelle à chaque pointage — voir demande d'Ahmed.
+  var debutEl = document.getElementById("hrsDebut");
+  if (debutEl && !debutEl.value) debutEl.value = "08:00";
+  var finEl = document.getElementById("hrsFin");
+  if (finEl && !finEl.value) finEl.value = "17:00";
   populateHeuresChantiers();
   await loadMesHeures();
 }

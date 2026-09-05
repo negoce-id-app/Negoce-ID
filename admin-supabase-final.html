@@ -2493,6 +2493,45 @@ tr:hover td{background:#FAFBFF}
 @media(max-width:420px){
   .kpi-grid{grid-template-columns:1fr}
 }
+
+/* Heures de travail — vue "Par salarié" (paragraphes) et vue "Agenda" */
+.hrs-group{border:2px solid var(--border);border-radius:12px;margin-bottom:12px;overflow:hidden}
+.hrs-group-hdr{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;background:var(--bg)}
+.hrs-group-name{font-size:13.5px;font-weight:700;color:var(--navy)}
+.hrs-group-total{font-size:13px;font-weight:800;color:var(--orange-dark);background:var(--orange-soft);padding:3px 10px;border-radius:20px;white-space:nowrap}
+.hrs-group-body{padding:4px 14px}
+.hrs-row{display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:9px 0;border-top:1px solid var(--border)}
+.hrs-group-body .hrs-row:first-child{border-top:none}
+.hrs-row-main{display:flex;align-items:center;flex-wrap:wrap;gap:12px;flex:1;font-size:12.5px}
+.hrs-row-salarie{font-weight:700;color:var(--navy)}
+.hrs-row-chantier{color:var(--navy);font-weight:600}
+.hrs-row-total{margin-left:auto;font-size:13px}
+.hrs-row-note{width:100%;font-size:12px;color:var(--muted)}
+.hrs-row-actions{display:flex;gap:2px}
+
+.hrs-cal-nav{display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:10px}
+.hrs-cal-month{font-size:14px;font-weight:700;color:var(--navy);text-transform:capitalize;min-width:160px;text-align:center}
+.hrs-cal-weekdays{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:6px;font-size:11px;font-weight:700;color:var(--muted);text-align:center}
+.hrs-cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.hrs-cal-cell{min-height:56px;border:1.5px solid var(--border);border-radius:8px;padding:5px;cursor:pointer;background:var(--white)}
+.hrs-cal-cell.empty{visibility:hidden;cursor:default}
+.hrs-cal-cell.weekend{background:var(--bg)}
+.hrs-cal-cell.has-entries{border-color:var(--orange);background:var(--orange-soft)}
+.hrs-cal-cell.selected{border-color:var(--orange-dark);box-shadow:0 0 0 2px var(--orange-dark) inset}
+.hrs-cal-daynum{font-size:11px;font-weight:700;color:var(--navy)}
+.hrs-cal-total{font-size:11px;font-weight:800;color:var(--orange-dark);margin-top:3px}
+.hrs-cal-count{font-size:9.5px;color:var(--muted)}
+.hrs-agenda-detail{margin-top:14px;border-top:2px solid var(--border);padding-top:12px}
+.hrs-agenda-detail-title{font-size:13px;font-weight:700;color:var(--navy);text-transform:capitalize;margin-bottom:6px}
+
+@media(max-width:768px){
+  .hrs-cal-cell{min-height:44px;padding:3px}
+  .hrs-cal-daynum{font-size:10px}
+  .hrs-cal-total{font-size:10px}
+  .hrs-cal-count{display:none}
+  .hrs-cal-month{min-width:0}
+  .hrs-row-total{margin-left:0}
+}
 </style>
 </head>
 <body>
@@ -2816,10 +2855,12 @@ tr:hover td{background:#FAFBFF}
           <button class="btn-action btn-outline" onclick="loadHeuresTravail()">🔍 Rechercher sur la période</button>
           <button class="btn-action btn-outline" onclick="reinitialiserPeriodeHeures()">✕ Réinitialiser</button>
         </div>
-        <div class="table-scroll"><table>
-          <thead><tr><th>Date</th><th>Code</th><th>Salarié</th><th>Chantier</th><th>Horaires</th><th>Total</th><th>Note</th><th>Actions</th></tr></thead>
-          <tbody id="heuresBody"><tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px">⏳ Chargement...</td></tr></tbody>
-        </table></div>
+        <div class="filter-row">
+          <button class="btn-action btn-gold" id="heuresViewSalarieBtn" onclick="setHeuresView('salarie')">👤 Par salarié</button>
+          <button class="btn-action btn-outline" id="heuresViewAgendaBtn" onclick="setHeuresView('agenda')">📅 Agenda</button>
+          <button class="btn-action btn-outline" id="heuresViewListeBtn" onclick="setHeuresView('liste')">📋 Liste</button>
+        </div>
+        <div id="heuresViewContainer"><div style="text-align:center;color:var(--muted);padding:24px">⏳ Chargement...</div></div>
       </div>
     </div>
 
@@ -3266,6 +3307,10 @@ var currentCompany = null;
 var salaries = [];
 var passages = [];
 var heuresTravail = [];
+// Vue de l'onglet "Heures de travail" — voir renderHeuresBody / setHeuresView.
+var heuresViewMode = "salarie"; // "salarie" | "agenda" | "liste"
+var heuresAgendaRef = null; // {y, m} mois affiché dans l'agenda (m = 0-indexé)
+var heuresAgendaSelected = null; // date "YYYY-MM-DD" sélectionnée dans l'agenda
 var salPhotoData = null;
 // Table "passages" ne stocke que le nom d'agence (texte figé au moment du
 // scan, ex. "UNIKALO CHARENTE MERIGNAC") — pas de ville, et surtout pas de
@@ -5174,6 +5219,10 @@ async function loadHeuresTravail() {
     console.error("loadHeuresTravail error", e);
     heuresTravail = [];
   }
+  // Un nouveau chargement (période différente) doit réafficher l'agenda sur
+  // le mois pertinent plutôt que de rester bloqué sur un mois vide.
+  heuresAgendaRef = null;
+  heuresAgendaSelected = null;
   populateHeuresFilters();
   renderHeuresBody();
 }
@@ -5224,6 +5273,10 @@ function getFilteredHeures() {
   return result;
 }
 
+// ── Onglet "Heures de travail" (admin) : 3 vues au choix ──
+// - "salarie" (défaut) : un paragraphe par salarié, facile à parcourir.
+// - "agenda"  : calendrier mensuel, clic sur un jour pour voir le détail.
+// - "liste"   : ancien tableau chronologique plat (conservé, rien de retiré).
 function renderHeuresBody() {
   var filtered = getFilteredHeures();
   var totalEl = document.getElementById("heuresTotalVal");
@@ -5231,13 +5284,84 @@ function renderHeuresBody() {
     var total = filtered.reduce(function(sum,h){ return sum + (Number(h.heures)||0); }, 0);
     totalEl.textContent = total.toFixed(2).replace(".",",") + " h";
   }
-  var hb = document.getElementById("heuresBody");
-  if (!hb) return;
-  if (filtered.length === 0) {
-    hb.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px">Aucune heure saisie</td></tr>';
-    return;
+  var container = document.getElementById("heuresViewContainer");
+  if (!container) return;
+  if (heuresViewMode === "agenda") {
+    container.innerHTML = renderHeuresAgendaView(filtered);
+  } else if (heuresViewMode === "liste") {
+    container.innerHTML = renderHeuresListeView(filtered);
+  } else {
+    container.innerHTML = renderHeuresSalarieView(filtered);
   }
-  hb.innerHTML = filtered.map(function(h) {
+}
+
+function setHeuresView(mode) {
+  heuresViewMode = mode;
+  var btns = { salarie: "heuresViewSalarieBtn", agenda: "heuresViewAgendaBtn", liste: "heuresViewListeBtn" };
+  Object.keys(btns).forEach(function(k) {
+    var el = document.getElementById(btns[k]);
+    if (!el) return;
+    el.classList.toggle("btn-gold", k === mode);
+    el.classList.toggle("btn-outline", k !== mode);
+  });
+  renderHeuresBody();
+}
+
+// Ligne compacte pour une entrée d'heures — réutilisée par la vue "Par
+// salarié" (showSalarie=false, le nom est déjà dans l'en-tête du groupe) et
+// par le détail d'un jour dans l'agenda (showSalarie=true, plusieurs
+// salariés peuvent apparaître le même jour).
+function heuresRowHtml(h, showSalarie) {
+  var date = h.date_travail ? new Date(h.date_travail+"T00:00:00").toLocaleDateString("fr-FR") : "—";
+  var horaires = (h.heure_debut||"").slice(0,5) + " → " + (h.heure_fin||"").slice(0,5);
+  return '<div class="hrs-row">'+
+    '<div class="hrs-row-main">'+
+      (showSalarie ? '<div class="hrs-row-salarie">👤 '+esc(h.nom_salarie||h.code_salarie)+'</div>' : '')+
+      '<div>📅 '+date+'</div>'+
+      (h.chantier ? '<div class="hrs-row-chantier">🏗️ '+esc(h.chantier)+'</div>' : '<span style="color:var(--muted);font-size:11px">—</span>')+
+      '<div>⏱️ '+horaires+'</div>'+
+      '<div class="hrs-row-total"><strong>'+(Number(h.heures)||0).toFixed(2).replace(".",",")+' h</strong></div>'+
+    '</div>'+
+    (h.note ? '<div class="hrs-row-note">'+esc(h.note)+'</div>' : '')+
+    '<div class="hrs-row-actions">'+
+      '<button class="btn-tbl" onclick="editHeure('+h.id+')">✏️</button>'+
+      '<button class="btn-tbl danger" onclick="deleteHeure('+h.id+')" title="Supprimer définitivement">🗑️</button>'+
+    '</div>'+
+  '</div>';
+}
+
+function renderHeuresSalarieView(filtered) {
+  if (filtered.length === 0) return '<div style="text-align:center;color:var(--muted);padding:24px">Aucune heure saisie</div>';
+  var groups = {};
+  var order = [];
+  filtered.forEach(function(h) {
+    var key = h.code_salarie || h.nom_salarie || "—";
+    if (!groups[key]) {
+      groups[key] = { nom: h.nom_salarie || h.code_salarie || "Salarié", code: h.code_salarie || "", rows: [], total: 0 };
+      order.push(key);
+    }
+    groups[key].rows.push(h);
+    groups[key].total += Number(h.heures) || 0;
+  });
+  order.sort(function(a,b){ return String(groups[a].nom).localeCompare(String(groups[b].nom), 'fr'); });
+  return order.map(function(key) {
+    var g = groups[key];
+    return '<div class="hrs-group">'+
+      '<div class="hrs-group-hdr">'+
+        '<div class="hrs-group-name">👤 '+esc(g.nom)+(g.code ? ' <code style="font-weight:700;font-size:11px;color:var(--muted)">('+esc(g.code)+')</code>' : '')+'</div>'+
+        '<div class="hrs-group-total">'+g.total.toFixed(2).replace(".",",")+' h</div>'+
+      '</div>'+
+      '<div class="hrs-group-body">'+g.rows.map(function(h){ return heuresRowHtml(h, false); }).join("")+'</div>'+
+    '</div>';
+  }).join("");
+}
+
+function renderHeuresListeView(filtered) {
+  var head = '<thead><tr><th>Date</th><th>Code</th><th>Salarié</th><th>Chantier</th><th>Horaires</th><th>Total</th><th>Note</th><th>Actions</th></tr></thead>';
+  if (filtered.length === 0) {
+    return '<div class="table-scroll"><table>'+head+'<tbody><tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px">Aucune heure saisie</td></tr></tbody></table></div>';
+  }
+  var rows = filtered.map(function(h) {
     var date = h.date_travail ? new Date(h.date_travail+"T00:00:00").toLocaleDateString("fr-FR") : "—";
     var horaires = (h.heure_debut||"").slice(0,5) + " → " + (h.heure_fin||"").slice(0,5);
     return '<tr>'+
@@ -5254,6 +5378,77 @@ function renderHeuresBody() {
       '</td>'+
     '</tr>';
   }).join("");
+  return '<div class="table-scroll"><table>'+head+'<tbody id="heuresBody">'+rows+'</tbody></table></div>';
+}
+
+// Calendrier mensuel — regroupe les entrées déjà chargées (heuresTravail,
+// filtrées par salarié/chantier) par jour. Ne recharge rien depuis le
+// serveur : si le mois voulu n'est pas dans les données déjà récupérées
+// (cf. limite de 100 lignes / plage de dates dans loadHeuresTravail), le
+// jour apparaîtra vide — utiliser la recherche par période au-dessus pour
+// élargir la plage si besoin.
+function renderHeuresAgendaView(filtered) {
+  if (!heuresAgendaRef) {
+    var ref = filtered.length ? filtered[0].date_travail : new Date().toISOString().slice(0, 10);
+    var parts = String(ref).split("-");
+    heuresAgendaRef = { y: parseInt(parts[0], 10), m: parseInt(parts[1], 10) - 1 };
+  }
+  var y = heuresAgendaRef.y, m = heuresAgendaRef.m;
+  var byDay = {};
+  filtered.forEach(function(h) {
+    if (!h.date_travail) return;
+    if (!byDay[h.date_travail]) byDay[h.date_travail] = [];
+    byDay[h.date_travail].push(h);
+  });
+  var first = new Date(y, m, 1);
+  var startOffset = (first.getDay() + 6) % 7; // grille commence le lundi
+  var daysInMonth = new Date(y, m + 1, 0).getDate();
+  var monthLabel = first.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+  var cells = "";
+  for (var i = 0; i < startOffset; i++) cells += '<div class="hrs-cal-cell empty"></div>';
+  for (var d = 1; d <= daysInMonth; d++) {
+    var dateStr = y + "-" + String(m + 1).padStart(2, "0") + "-" + String(d).padStart(2, "0");
+    var entries = byDay[dateStr] || [];
+    var total = entries.reduce(function(s, h){ return s + (Number(h.heures) || 0); }, 0);
+    var isSelected = heuresAgendaSelected === dateStr;
+    var isWeekend = [0, 6].indexOf(new Date(y, m, d).getDay()) !== -1;
+    cells += '<div class="hrs-cal-cell'+(entries.length?' has-entries':'')+(isSelected?' selected':'')+(isWeekend?' weekend':'')+'" onclick="selectAgendaDay(\''+dateStr+'\')">'+
+      '<div class="hrs-cal-daynum">'+d+'</div>'+
+      (entries.length ? '<div class="hrs-cal-total">'+total.toFixed(1).replace(".",",")+'h</div><div class="hrs-cal-count">'+entries.length+' passage'+(entries.length>1?'s':'')+'</div>' : '')+
+    '</div>';
+  }
+  var dayDetail = "";
+  if (heuresAgendaSelected) {
+    var dayEntries = byDay[heuresAgendaSelected];
+    var dLabel = new Date(heuresAgendaSelected+"T00:00:00").toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+    dayDetail = '<div class="hrs-agenda-detail"><div class="hrs-agenda-detail-title">'+dLabel+'</div>'+
+      (dayEntries && dayEntries.length ? dayEntries.map(function(h){ return heuresRowHtml(h, true); }).join("") : '<div style="color:var(--muted);font-size:12px;text-align:center;padding:12px">Aucune heure ce jour-là</div>')+
+    '</div>';
+  }
+  return '<div class="hrs-cal-nav">'+
+      '<button class="btn-action btn-outline" onclick="goAgendaMonth(-1)">‹</button>'+
+      '<div class="hrs-cal-month">'+monthLabel+'</div>'+
+      '<button class="btn-action btn-outline" onclick="goAgendaMonth(1)">›</button>'+
+    '</div>'+
+    '<div class="hrs-cal-weekdays"><div>Lun</div><div>Mar</div><div>Mer</div><div>Jeu</div><div>Ven</div><div>Sam</div><div>Dim</div></div>'+
+    '<div class="hrs-cal-grid">'+cells+'</div>'+
+    dayDetail;
+}
+
+function goAgendaMonth(delta) {
+  if (!heuresAgendaRef) return;
+  var m = heuresAgendaRef.m + delta;
+  var y = heuresAgendaRef.y;
+  if (m < 0) { m = 11; y--; }
+  if (m > 11) { m = 0; y++; }
+  heuresAgendaRef = { y: y, m: m };
+  heuresAgendaSelected = null;
+  renderHeuresBody();
+}
+
+function selectAgendaDay(dateStr) {
+  heuresAgendaSelected = (heuresAgendaSelected === dateStr) ? null : dateStr;
+  renderHeuresBody();
 }
 
 // ── Modification / suppression d'une ligne d'heures par l'admin (le
