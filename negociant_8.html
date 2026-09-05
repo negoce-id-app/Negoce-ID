@@ -2437,6 +2437,12 @@ body{font-family:'Inter',sans-serif;background:var(--bg);display:flex;flex-direc
 .bl-input{flex:1;padding:13px;border:2px solid rgba(255,255,255,0.15);border-radius:12px;font-size:16px;font-weight:700;letter-spacing:2px;text-transform:uppercase;font-family:monospace;color:#fff;background:rgba(255,255,255,0.08);-webkit-appearance:none}
 .bl-input::placeholder{color:rgba(255,255,255,0.25);letter-spacing:0;font-weight:400}
 .bl-input:focus{outline:none;border-color:var(--orange)}
+/* Correctif Windows/Chrome : la liste déroulante d'un <select> est rendue par
+   l'OS avec un fond blanc, mais héritait du texte blanc du champ (bl-input),
+   ce qui rendait les options illisibles sauf au survol (surlignage bleu). On
+   force donc explicitly un texte foncé lisible sur fond blanc pour les
+   options, indépendamment du style (sombre) du champ fermé. */
+.bl-input option{color:var(--navy);background:#fff;font-weight:600}
 .manual-code-input{flex:1;padding:13px;border:2px solid var(--border);border-radius:12px;font-size:16px;font-weight:700;letter-spacing:2px;text-transform:uppercase;font-family:monospace;color:var(--navy);-webkit-text-fill-color:var(--navy);opacity:1;background:#fff;-webkit-appearance:none}
 .manual-code-input::placeholder{color:var(--muted);-webkit-text-fill-color:var(--muted);letter-spacing:0;font-weight:400}
 .manual-code-input:focus{outline:none;border-color:var(--orange)}
