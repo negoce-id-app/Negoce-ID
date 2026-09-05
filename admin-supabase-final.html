@@ -2500,8 +2500,11 @@ tr:hover td{background:#FAFBFF}
 .hrs-group-name{font-size:13.5px;font-weight:700;color:var(--navy)}
 .hrs-group-total{font-size:13px;font-weight:800;color:var(--orange-dark);background:var(--orange-soft);padding:3px 10px;border-radius:20px;white-space:nowrap}
 .hrs-group-body{padding:4px 14px}
+.hrs-week{margin:2px 0 8px}
+.hrs-week-hdr{display:flex;align-items:center;justify-content:space-between;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;padding:8px 0 4px;border-top:2px solid var(--border)}
+.hrs-group-body .hrs-week:first-child .hrs-week-hdr{border-top:none;padding-top:2px}
 .hrs-row{display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:9px 0;border-top:1px solid var(--border)}
-.hrs-group-body .hrs-row:first-child{border-top:none}
+.hrs-week .hrs-row:first-child{border-top:none}
 .hrs-row-main{display:flex;align-items:center;flex-wrap:wrap;gap:12px;flex:1;font-size:12.5px}
 .hrs-row-salarie{font-weight:700;color:var(--navy)}
 .hrs-row-chantier{color:var(--navy);font-weight:600}
@@ -5351,7 +5354,48 @@ function renderHeuresSalarieView(filtered) {
         '<div class="hrs-group-name">👤 '+esc(g.nom)+(g.code ? ' <code style="font-weight:700;font-size:11px;color:var(--muted)">('+esc(g.code)+')</code>' : '')+'</div>'+
         '<div class="hrs-group-total">'+g.total.toFixed(2).replace(".",",")+' h</div>'+
       '</div>'+
-      '<div class="hrs-group-body">'+g.rows.map(function(h){ return heuresRowHtml(h, false); }).join("")+'</div>'+
+      '<div class="hrs-group-body">'+renderHeuresParSemaine(g.rows)+'</div>'+
+    '</div>';
+  }).join("");
+}
+
+// Numéro de semaine ISO 8601 (lundi = début de semaine, comme le calendrier
+// français) — utilisé pour sous-découper les heures de chaque salarié.
+function isoWeekInfo(dateStr) {
+  var d = new Date(dateStr + "T00:00:00");
+  var day = (d.getDay() + 6) % 7; // 0 = lundi ... 6 = dimanche
+  d.setDate(d.getDate() - day + 3); // jeudi de la semaine ISO courante
+  var firstThursday = new Date(d.getFullYear(), 0, 4);
+  var diff = (d - firstThursday) / 86400000;
+  var week = 1 + Math.round(diff / 7);
+  return { week: week, year: d.getFullYear() };
+}
+
+// Sous-découpe les lignes d'un salarié par semaine — les entrées arrivent
+// déjà triées par date décroissante (voir loadHeuresTravail), donc les
+// semaines apparaissent naturellement de la plus récente à la plus ancienne.
+function renderHeuresParSemaine(rows) {
+  var weeks = {};
+  var order = [];
+  rows.forEach(function(h) {
+    var key, label;
+    if (h.date_travail) {
+      var info = isoWeekInfo(h.date_travail);
+      key = info.year + "-W" + info.week;
+      label = "Semaine " + info.week + " · " + info.year;
+    } else {
+      key = "—";
+      label = "Date inconnue";
+    }
+    if (!weeks[key]) { weeks[key] = { label: label, rows: [], total: 0 }; order.push(key); }
+    weeks[key].rows.push(h);
+    weeks[key].total += Number(h.heures) || 0;
+  });
+  return order.map(function(key) {
+    var w = weeks[key];
+    return '<div class="hrs-week">'+
+      '<div class="hrs-week-hdr"><div>📆 '+esc(w.label)+'</div><div>'+w.total.toFixed(2).replace(".",",")+' h</div></div>'+
+      w.rows.map(function(h){ return heuresRowHtml(h, false); }).join("")+
     '</div>';
   }).join("");
 }
@@ -6362,6 +6406,14 @@ function exportCSV(type) {
 // point-virgule posait des soucis de lisibilité une fois ouvert dans
 // Excel (encodage/colonnes mal interprétées selon les réglages
 // régionaux). SheetJS est déjà chargé plus haut (voir <script> xlsx.full).
+// Libellé mois FR capitalisé (ex : "Septembre 2026") — utilisé dans l'export
+// Excel, à côté de isoWeekInfo() (déjà défini pour la vue "Par salarié").
+function monthLabelFr(dateStr) {
+  var d = new Date(dateStr + "T00:00:00");
+  var s = d.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
 function exportHeuresExcel() {
   var data = getFilteredHeures();
   if (!data.length) { alert("Aucune donnée à exporter"); return; }
@@ -6378,25 +6430,62 @@ function exportHeuresExcel() {
       groups[key] = { nom: h.nom_salarie || h.code_salarie || "Salarié", rows: [] };
       order.push(key);
     }
-    var date = h.date_travail ? new Date(h.date_travail+"T00:00:00").toLocaleDateString("fr-FR") : "";
-    groups[key].rows.push({
-      "Date": date,
-      "Code salarié": h.code_salarie || "",
-      "Salarié": h.nom_salarie || h.code_salarie || "",
-      "Chantier": h.chantier || "",
-      "Début": (h.heure_debut||"").slice(0,5),
-      "Fin": (h.heure_fin||"").slice(0,5),
-      "Heures": Number(h.heures)||0,
-      "Note": h.note || ""
-    });
+    groups[key].rows.push(h);
   });
 
   var wb = XLSX.utils.book_new();
   var usedSheetNames = {};
   order.forEach(function(key) {
     var g = groups[key];
-    var ws = XLSX.utils.json_to_sheet(g.rows);
-    ws["!cols"] = [{wch:12},{wch:16},{wch:20},{wch:22},{wch:8},{wch:8},{wch:9},{wch:30}];
+    // Ordre chronologique croissant : plus naturel pour lire les
+    // sous-totaux semaine/mois qui suivent en bas de feuille.
+    var rows = g.rows.slice().sort(function(a, b) {
+      var da = a.date_travail || "", db = b.date_travail || "";
+      if (da !== db) return da < db ? -1 : 1;
+      return (a.heure_debut || "").localeCompare(b.heure_debut || "");
+    });
+
+    var aoa = [["Date","Semaine","Mois","Code salarié","Salarié","Chantier","Début","Fin","Heures","Note"]];
+    var weekTotals = {}, weekOrder = [];
+    var monthTotals = {}, monthOrder = [];
+    rows.forEach(function(h) {
+      var dateStr = h.date_travail || "";
+      var dateFr = dateStr ? new Date(dateStr+"T00:00:00").toLocaleDateString("fr-FR") : "";
+      var semaineLabel = "", moisLabel = "";
+      var heures = Number(h.heures) || 0;
+      if (dateStr) {
+        var info = isoWeekInfo(dateStr);
+        semaineLabel = "S" + info.week + " · " + info.year;
+        moisLabel = monthLabelFr(dateStr);
+        var wKey = info.year + "-W" + info.week;
+        if (!weekTotals[wKey]) { weekTotals[wKey] = { label: semaineLabel, total: 0 }; weekOrder.push(wKey); }
+        weekTotals[wKey].total += heures;
+        var mKey = dateStr.slice(0, 7);
+        if (!monthTotals[mKey]) { monthTotals[mKey] = { label: moisLabel, total: 0 }; monthOrder.push(mKey); }
+        monthTotals[mKey].total += heures;
+      }
+      aoa.push([
+        dateFr, semaineLabel, moisLabel, h.code_salarie || "", h.nom_salarie || h.code_salarie || "",
+        h.chantier || "", (h.heure_debut||"").slice(0,5), (h.heure_fin||"").slice(0,5), heures, h.note || ""
+      ]);
+    });
+
+    aoa.push([]);
+    aoa.push(["Totaux par semaine"]);
+    aoa.push(["Semaine", "Total heures"]);
+    weekOrder.forEach(function(wKey) {
+      aoa.push([weekTotals[wKey].label, Number(weekTotals[wKey].total.toFixed(2))]);
+    });
+
+    aoa.push([]);
+    aoa.push(["Totaux par mois"]);
+    aoa.push(["Mois", "Total heures"]);
+    monthOrder.forEach(function(mKey) {
+      aoa.push([monthTotals[mKey].label, Number(monthTotals[mKey].total.toFixed(2))]);
+    });
+
+    var ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws["!cols"] = [{wch:12},{wch:14},{wch:16},{wch:16},{wch:20},{wch:22},{wch:8},{wch:8},{wch:9},{wch:30}];
     XLSX.utils.book_append_sheet(wb, ws, sanitizeSheetName(g.nom, usedSheetNames));
   });
   XLSX.writeFile(wb, "heures_"+currentCompany.id+"_"+new Date().toISOString().slice(0,10)+".xlsx");
