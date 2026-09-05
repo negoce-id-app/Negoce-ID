@@ -2635,6 +2635,7 @@ textarea.dmd-in{resize:none;min-height:80px}
 
 <!-- MES HEURES DE TRAVAIL -->
 <div class="screen hidden" id="sHeures">
+  <div id="hrsMissingBanner" class="hidden" style="background:var(--orange-soft);color:var(--orange-dark);font-weight:700;font-size:13px;padding:12px 14px;border-radius:12px;margin-bottom:14px;cursor:pointer" title="Toucher pour masquer" onclick="this.classList.add('hidden')"></div>
   <div class="dmd-card">
     <label class="dmd-lbl">Date</label>
     <input class="dmd-in" id="hrsDate" type="date">
@@ -3098,6 +3099,27 @@ async function sendHeureTravail() {
   }
 }
 
+// Rappel léger (pas de notification push, voir échange avec Ahmed) : si le
+// salarié ouvre l'onglet "Mes heures" à partir de 8h et n'a rien saisi pour
+// la veille (un jour ouvré, on ne réclame rien un lundi pour le week-end),
+// un bandeau le lui rappelle. Purement côté client, basé sur les heures déjà
+// chargées — se masque tout seul dès que l'entrée de la veille existe.
+function checkHeuresManquantes(heures) {
+  var banner = document.getElementById("hrsMissingBanner");
+  if (!banner) return;
+  var now = new Date();
+  if (now.getHours() < 8) { banner.classList.add("hidden"); return; }
+  var hier = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+  var dow = hier.getDay(); // 0 = dimanche, 6 = samedi
+  if (dow === 0 || dow === 6) { banner.classList.add("hidden"); return; }
+  var hierStr = hier.toISOString().slice(0, 10);
+  var dejaSaisi = (heures || []).some(function(h) { return h.date_travail === hierStr; });
+  if (dejaSaisi) { banner.classList.add("hidden"); return; }
+  var hierLabel = hier.toLocaleDateString("fr-FR");
+  banner.textContent = "⏰ Vous n'avez pas renseigné vos heures du " + hierLabel + ".";
+  banner.classList.remove("hidden");
+}
+
 async function loadMesHeures() {
   if (!currentCode) return;
   var list = document.getElementById("hrsList");
@@ -3106,6 +3128,7 @@ async function loadMesHeures() {
     var { data, error } = await supabase.rpc('get_heures_by_salarie', { p_code: currentCode, p_pin: currentPin });
     if (error) throw error;
     var heures = Array.isArray(data) ? data : [];
+    checkHeuresManquantes(heures);
     if (heures.length === 0) {
       list.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted)">Aucune heure saisie</div>';
       return;
@@ -3476,6 +3499,8 @@ function out() {
   stopTotpCountdown();
   var confirmEl = document.getElementById("confirmBanner");
   if (confirmEl) confirmEl.style.display = "none";
+  var hrsBannerEl = document.getElementById("hrsMissingBanner");
+  if (hrsBannerEl) hrsBannerEl.classList.add("hidden");
   document.getElementById("hdrLogoutLink").classList.add("hidden");
   document.getElementById("codeIn").value = "";
   document.getElementById("loginPwd").value = "";
